@@ -17,6 +17,7 @@ import * as React from "react";
 import { facesFor } from "@/lib/faces";
 import { HostStage } from "./host-stage";
 import { HostChrome } from "./host-chrome";
+import { CopyButton } from "./code-block";
 import { PageLoader, PulseLoader } from "@/registry/zoblocks/pulse-loader/pulse-loader";
 import { Recorder, RecorderDispositionStrip } from "@/registry/zoblocks/recorder/recorder";
 import { RhythmLoader } from "@/registry/zoblocks/rhythm-loader/rhythm-loader";
@@ -4373,8 +4374,6 @@ export function ComponentPreview({
   const scenarios = SCENARIOS[name];
   const [scenarioId, setScenarioId] = React.useState(scenarios?.[0]?.id ?? "");
   const [density, setDensity] = React.useState<Density>("standard");
-  const [copied, setCopied] = React.useState(false);
-
   // Deep links. Read once on mount rather than through the router: this is a
   // presentational selection, and pushing it through Next's router would
   // re-render the whole route to move a radio button.
@@ -4425,12 +4424,6 @@ export function ComponentPreview({
     },
     [scenarios, scenarioId, select],
   );
-
-  React.useEffect(() => {
-    if (!copied) return;
-    const timer = window.setTimeout(() => setCopied(false), 1600);
-    return () => window.clearTimeout(timer);
-  }, [copied]);
 
   /*
    * Signature is the one component the site loads Ant Design for. Showing a
@@ -4655,23 +4648,18 @@ export function ComponentPreview({
                   ?state={scenario.id}
                 </span>
                 <span className="flex-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard
-                      ?.writeText(scenario.code ?? "")
-                      .then(() => setCopied(true));
-                  }}
-                  className="inline-flex min-h-6 items-center rounded-md border border-panel-rule px-2 py-1 font-mono text-[0.625rem] uppercase tracking-wider text-panel-muted transition-colors hover:border-trace/40 hover:text-panel-fg"
-                >
-                  {copied ? "Copied" : "Copy"}
-                </button>
-                {/* Announced rather than only shown: the label change is the
-                    only feedback a copy action gives, and a screen reader
-                    otherwise gets nothing at all. */}
-                <span aria-live="polite" className="sr-only">
-                  {copied ? "Example copied to clipboard" : ""}
-                </span>
+                {/* Keyed by scenario so "Copied" never carries over to the
+                    next state's code. The shared button also swallows a
+                    blocked clipboard, which this one used to leave as an
+                    unhandled rejection. */}
+                <CopyButton
+                  key={scenario.id}
+                  text={scenario.code}
+                  what="example"
+                  variant="outline"
+                  compact={false}
+                  className="min-h-6 px-2 py-1 text-[0.625rem]"
+                />
               </div>
             </div>
           ) : null}

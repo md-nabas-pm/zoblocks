@@ -43,18 +43,20 @@ const PAGES: Item[] = [
     keywords: "catalogue browse all",
   },
   /*
-   * Install and Compare were missing.
+   * Docs and Compare were missing.
    *
-   * Both are footer-only in the site chrome, which made this the one place a
-   * reader could have reached them without scrolling — and it did not list
-   * them. Install is the page a developer needs most and the hardest to find.
+   * Compare is footer-only in the site chrome, which makes this the one place
+   * a reader reaches it without scrolling. Docs (which absorbed the old
+   * Install page) is labelled for what people type when they are stuck:
+   * "install", "setup", a framework's name.
    */
   {
-    id: "p-install",
-    label: "Install",
+    id: "p-docs",
+    label: "Docs",
     group: "Pages",
-    href: "/install",
-    keywords: "setup getting started next vite tailwind alias tokens cli init",
+    href: "/docs",
+    keywords:
+      "install setup getting started documentation guide new project next vite tailwind cli init add antd ant design mui material vue angular svelte html npm pnpm yarn bun troubleshooting",
   },
   {
     id: "p-compare",

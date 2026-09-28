@@ -14,6 +14,7 @@ import { CopilotGallery } from "@/components/site/copilot-gallery";
 import { SwitchGallery } from "@/components/site/switch-gallery";
 import { DatePickerGallery } from "@/components/site/date-picker-gallery";
 import { InstallCommand, RevealRoot } from "@/components/site/interactions";
+import { CodeBlock } from "@/components/site/code-block";
 import { LanguageSwitch } from "@/components/site/language-switch";
 import { HostStage } from "@/components/site/host-stage";
 import { SectionTabs, type RailSection } from "@/components/site/section-tabs";
@@ -839,13 +840,14 @@ export default async function ComponentPage({ params }: { params: Promise<{ name
                 (580px of code in 501px of box), which full width also fixes.
               */}
                     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,14rem)] lg:items-start">
-                      <pre
-                        data-reveal
-                        tabIndex={0}
-                        className="scroll-thin-dark overflow-x-auto rounded-2xl border border-panel-rule bg-panel p-5 font-mono text-[0.75rem] leading-relaxed text-panel-fg/90"
-                      >
-                        <code>{component.usage}</code>
-                      </pre>
+                      <div data-reveal className="min-w-0">
+                        <CodeBlock
+                          title="Usage"
+                          what="usage example"
+                          language="tsx"
+                          code={component.usage}
+                        />
+                      </div>
 
                       <div data-reveal style={{ "--reveal-delay": "80ms" } as React.CSSProperties}>
                         <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-graphite">
@@ -957,12 +959,14 @@ export default async function ComponentPage({ params }: { params: Promise<{ name
                           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-graphite">
                             {example.description}
                           </p>
-                          <pre
-                            tabIndex={0}
-                            className="scroll-thin-dark mt-4 overflow-auto rounded-2xl border border-panel-rule bg-panel p-5 font-mono text-[0.7rem] leading-relaxed text-panel-fg/90"
-                          >
-                            <code>{example.code}</code>
-                          </pre>
+                          <CodeBlock
+                            title={example.title}
+                            what={`example: ${example.title}`}
+                            language="tsx"
+                            code={example.code}
+                            size="sm"
+                            className="mt-4"
+                          />
                         </article>
                       ))}
                     </div>
@@ -1120,12 +1124,15 @@ export default async function ComponentPage({ params }: { params: Promise<{ name
                           {source.split("\n").length} lines
                         </span>
                       </summary>
-                      <pre
-                        tabIndex={0}
-                        className="scroll-thin-dark mt-4 max-h-[32rem] overflow-auto rounded-2xl border border-panel-rule bg-panel p-5 font-mono text-[0.7rem] leading-relaxed text-panel-fg/90"
-                      >
-                        <code>{source}</code>
-                      </pre>
+                      <CodeBlock
+                        title="Source"
+                        what={`${component.title} source`}
+                        language="tsx"
+                        code={source}
+                        size="sm"
+                        maxHeight="32rem"
+                        className="mt-4"
+                      />
                     </details>
                   </div>
                 </section>

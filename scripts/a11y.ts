@@ -41,7 +41,7 @@ const BASE = process.argv[2] ?? "http://localhost:6001";
 const PAGES = [
   "/",
   "/components",
-  "/install",
+  "/docs",
   "/premium",
   "/enterprise",
   "/compare",

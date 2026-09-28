@@ -8,6 +8,7 @@ import { ArrowUpRight, Github } from "lucide-react";
 import { CommandMenu } from "@/components/site/command-menu";
 import { SiteMenu } from "@/components/site/site-menu";
 import { ZOWORK_HREF } from "@/lib/zowork";
+import { NAV, isNavActive } from "@/lib/nav";
 import { ThemeToggle } from "@/components/site/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -55,26 +56,7 @@ export function ZoBlocksMark({ className = "h-4 w-7" }: { className?: string }) 
   );
 }
 
-/*
- * Three slots: the catalogue, the blocks and Premium. Premium was two slots,
- * Marketplace and Pro, until 16 Sep 2026.
- *
- * Install and Compare were promoted here briefly during the content audit,
- * on the argument that they are the two highest-intent pages for a developer
- * and an engineering lead. Rahul reversed that on 4 Sep 2026 — the header is
- * for what the product *is*, and those two are how you get it and why. Both
- * stay one keystroke away in the command palette and in the footer, which is
- * where they were before.
- *
- * "Blocks" rather than "Showcase" for the third slot: the page's own eyebrow,
- * heading and landmark all say Blocks, and "showcase" additionally promises
- * customer work that the page then has to walk back in its first paragraph.
- */
-const NAV = [
-  { href: "/components", label: "Components" },
-  { href: "/showcase", label: "Blocks" },
-  { href: "/premium", label: "Premium" },
-];
+/* The header's slots, and why there are four: see `@/lib/nav`. */
 
 /**
  * The header condenses on scroll rather than sitting at a fixed weight. It is
@@ -172,7 +154,7 @@ export function SiteHeader() {
         <nav aria-label="Main" className="flex items-center gap-1">
           <ul className="mr-1 hidden items-center gap-0.5 md:flex">
             {NAV.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = isNavActive(item, pathname);
               return (
                 <li key={item.href}>
                   <Link
@@ -258,8 +240,8 @@ const FOOTER_LINKS = [
   {
     title: "Library",
     links: [
+      { href: "/docs", label: "Docs" },
       { href: "/components", label: "Components" },
-      { href: "/install", label: "Install" },
       { href: "/compare", label: "Compare" },
       { href: "/showcase", label: "Blocks" },
       { href: "/premium", label: "Premium" },

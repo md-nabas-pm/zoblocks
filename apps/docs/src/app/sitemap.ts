@@ -21,7 +21,7 @@ const SITE = "https://zoblocks.design";
 const STATIC_ROUTES: ReadonlyArray<{ path: string; priority: number }> = [
   { path: "", priority: 1 },
   { path: "/components", priority: 0.9 },
-  { path: "/install", priority: 0.8 },
+  { path: "/docs", priority: 0.8 },
   { path: "/showcase", priority: 0.7 },
   { path: "/premium", priority: 0.7 },
   { path: "/compare", priority: 0.6 },
