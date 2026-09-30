@@ -28,10 +28,13 @@ import {
   FRAMEWORK_LABEL,
   GLOBAL_STYLESHEET,
   REACT_FRAMEWORKS,
+  SCOPE_NOTE,
   SERVER_COMPONENTS,
   WEB_COMPONENTS,
+  PACKAGE_MANAGERS,
   ZOBLOCKS_STYLE_SUMMARY,
   distributionState,
+  toCommand,
   type ComponentDoc,
   type Snippet,
 } from "@zoblocks/component-meta";
@@ -185,6 +188,19 @@ export function buildAiManifest(catalog: ComponentDoc[], graph: RegistryGraphIte
       init: "npx @zoblocks/cli init",
       add: "npx @zoblocks/cli add {name} --yes",
     },
+    /*
+     * How each package manager runs the CLI and adds packages, as templates.
+     * Rendered by the same `toCommand` the /docs page uses, so the server
+     * builds the lines a reader would copy — `{package}` and `{packages}` are
+     * the only placeholders.
+     */
+    packageManagers: Object.fromEntries(
+      PACKAGE_MANAGERS.map((pm) => [
+        pm,
+        { run: toCommand(pm, { dlx: "{package}" }), add: toCommand(pm, { add: "{packages}" }) },
+      ]),
+    ),
+    scopeNote: SCOPE_NOTE,
     rules: CODING_RULES,
     lintRules: lintRules(),
     components,
@@ -222,9 +238,9 @@ function componentsMd(manifest: AiManifest): string {
 
 Every component in the public catalog. **Use the MCP server when it is connected**
 — \`get_component\` has the props, \`get_component_examples\` the code. This list
-is the fallback, and it is enough to know what exists: if it is not here,
-ZoBlocks does not ship it (there is no ZoBlocks Button, Input or Modal — use the
-app's own UI library for those).
+is the fallback, and it is enough to know what exists.
+
+${SCOPE_NOTE}
 
 | Component | Import from | What it is | Install |
 | --- | --- | --- | --- |

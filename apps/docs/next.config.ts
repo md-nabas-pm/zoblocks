@@ -66,6 +66,8 @@ const nextConfig: NextConfig = {
       "@zoblocks/clinical-note-core": "../../packages/clinical-note-core/dist/index.js",
       "@zoblocks/identity": "../../packages/identity/dist/index.js",
       "@zoblocks/identity-core": "../../packages/identity-core/dist/index.js",
+      // The remote MCP endpoint (src/app/mcp/route.ts, ADR 0017).
+      "@zoblocks/mcp": "../../packages/mcp/dist/index.js",
     },
   },
 

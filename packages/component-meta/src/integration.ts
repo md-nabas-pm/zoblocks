@@ -63,6 +63,15 @@ export const CODING_RULES: readonly string[] = [
   "Never build a Tailwind class name from a variable. Tailwind resolves classes by scanning source text, so a template literal produces no CSS and the severity styling silently disappears.",
 ];
 
+/**
+ * What ZoBlocks deliberately does not ship. An agent's most common mistake is
+ * inventing the missing piece — `@/components/zoblocks/button` — because the
+ * catalog cannot list an absence. Primitives follow Ant Design's API (ADR
+ * 0010) and the chrome around a clinical component comes from the host app.
+ */
+export const SCOPE_NOTE =
+  "ZoBlocks ships clinical components, loaders and a few controls — not a general UI kit. There is no ZoBlocks Button, Input, Select or Modal: use the app's own UI library for those (Ant Design, Material UI, or plain elements), and never invent a ZoBlocks import that is not in the catalog.";
+
 /* ------------------------------------------------------------------ */
 /* Base setup: alias, stylesheet, first component                     */
 /* ------------------------------------------------------------------ */

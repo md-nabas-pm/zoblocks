@@ -201,6 +201,20 @@ export default tseslint.config(
   },
 
   // -------------------------------------------------------------------------
+  // The MCP server is a Node binary and an HTTP handler, not component source.
+  //
+  // Same reasoning as the CLI above, and a narrower claim (ADR 0017): it
+  // fetches exactly one thing, the catalog manifest, and the rule also misreads
+  // the SDK handler's own `.fetch(request)` method as a network call. Off by
+  // name; `packages/mcp/test/capabilities.test.ts` asserts the claim directly —
+  // one fetch, no environment, no file writes.
+  // -------------------------------------------------------------------------
+  {
+    files: ["packages/mcp/**/*.ts", "packages/mcp/**/*.mjs"],
+    rules: { "@zoblocks/no-forbidden-capability": "off" },
+  },
+
+  // -------------------------------------------------------------------------
   // Build tooling. Runs in Node, may read the environment and write output.
   // -------------------------------------------------------------------------
   {

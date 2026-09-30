@@ -8,9 +8,9 @@
 
 Every component in the public catalog. **Use the MCP server when it is connected**
 — `get_component` has the props, `get_component_examples` the code. This list
-is the fallback, and it is enough to know what exists: if it is not here,
-ZoBlocks does not ship it (there is no ZoBlocks Button, Input or Modal — use the
-app's own UI library for those).
+is the fallback, and it is enough to know what exists.
+
+ZoBlocks ships clinical components, loaders and a few controls — not a general UI kit. There is no ZoBlocks Button, Input, Select or Modal: use the app's own UI library for those (Ant Design, Material UI, or plain elements), and never invent a ZoBlocks import that is not in the catalog.
 
 | Component | Import from | What it is | Install |
 | --- | --- | --- | --- |

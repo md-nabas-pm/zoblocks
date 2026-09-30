@@ -31,7 +31,7 @@ import {
  * Written to be short. Each instruction appears once — a new project is
  * "create the app, then follow the existing-app steps", not a second copy of
  * them — and every command is described once and rendered for the reader's
- * package manager (`@/lib/package-managers`).
+ * package manager (`package-managers.ts` in `@zoblocks/component-meta`).
  *
  * Every path on this page was run before it was written, on 28 Sep 2026: a
  * fresh Next.js 16 and Vite 8 app, each with npm, pnpm, Yarn 1 and Bun; `init`

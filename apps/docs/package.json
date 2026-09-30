@@ -24,6 +24,7 @@
     "@zoblocks/fhir": "workspace:*",
     "@zoblocks/fixtures": "workspace:*",
     "@zoblocks/host-react": "workspace:*",
+    "@zoblocks/mcp": "workspace:*",
     "@zoblocks/identity": "workspace:*",
     "@zoblocks/signature": "workspace:*",
     "@zoblocks/tabs": "workspace:*",
