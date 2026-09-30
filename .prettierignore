@@ -7,6 +7,7 @@ dist
 pnpm-lock.yaml
 apps/docs/public/r
 apps/docs/public/schema
+apps/docs/public/ai
 
 # Machine-written. Formatting these would fight the tool that produces them:
 # Prettier reformats, the next `pnpm gen` or `drizzle-kit generate` writes it
@@ -18,6 +19,7 @@ apps/docs/src/lib/generated
 apps/docs/src/app/generated-sources.css
 packages/react/src
 apps/hq/drizzle/meta
+skills/zoblocks/references
 
 # Token build outputs. The DTCG source in packages/tokens/tokens/ is
 # hand-written and IS formatted; everything below is emitted from it.

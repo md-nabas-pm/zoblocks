@@ -216,3 +216,12 @@ export function Callout({
 export function C({ children }: { children: React.ReactNode }) {
   return <code className="font-mono text-[0.8125rem] text-ink">{children}</code>;
 }
+
+/**
+ * Text from `@zoblocks/component-meta`'s integration data, where code is
+ * marked with backticks so the agent manifest can carry the same string.
+ * Each backticked span renders as `C`; everything else is left as it is.
+ */
+export function Prose({ text }: { text: string }) {
+  return <>{text.split("`").map((part, i) => (i % 2 === 1 ? <C key={i}>{part}</C> : part))}</>;
+}
