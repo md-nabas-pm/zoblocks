@@ -31,11 +31,11 @@ export const STYLES = ["zoblocks", "antd", "mui"] as const;
 export const PACKAGE_MANAGERS = ["npm", "pnpm", "yarn", "bun"] as const;
 
 export class NotFound extends Error {
-  constructor(
-    message: string,
-    readonly suggestions: string[],
-  ) {
+  readonly suggestions: string[];
+
+  constructor(message: string, suggestions: string[]) {
     super(message);
+    this.suggestions = suggestions;
   }
 }
 

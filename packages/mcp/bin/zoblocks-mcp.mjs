@@ -4,8 +4,11 @@
  * zoblocks-mcp — the ZoBlocks catalog for coding agents, over stdio.
  *
  * A thin shell, like the CLI's: read the version, hand argv to runStdio().
- * The published package ships `dist`, and that is what this loads; falling
- * back to `src` keeps it runnable from a checkout, where there is no build.
+ *
+ * It loads `dist` only. There is no fallback to `src`, unlike the CLI's
+ * binary, because it could not work: the source imports `./manifest.js` (the
+ * extension the compiled output needs) and Node's type stripping does not map
+ * that to `manifest.ts`. In a checkout, build first — the error says how.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -17,8 +20,11 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { version } = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 
 const built = path.join(root, "dist", "stdio.js");
-const entry = existsSync(built) ? built : path.join(root, "src", "stdio.ts");
-const { runStdio } = await import(pathToFileURL(entry).href);
+if (!existsSync(built)) {
+  stderr.write("zoblocks-mcp is not built. Run: pnpm --filter @zoblocks/mcp build\n");
+  exit(1);
+}
+const { runStdio } = await import(pathToFileURL(built).href);
 
 const code = await runStdio({
   argv: argv.slice(2),
