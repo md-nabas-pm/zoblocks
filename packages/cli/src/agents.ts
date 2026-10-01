@@ -47,15 +47,25 @@ interface ManualClient {
   container: "mcpServers";
 }
 
-export type Client = { id: string; label: string; aliases: string[]; next: string } & (
-  JsonClient | TomlClient | ManualClient
-);
+export type Client = {
+  id: string;
+  label: string;
+  aliases: string[];
+  /** What to do after the config is written, to see it connect. */
+  next: string;
+  /** The agent's own MCP documentation, for anything this does not cover. */
+  docsUrl: string;
+  /** The skill folder `zoblocks skill add` writes that this agent reads. */
+  skillDir: ".agents/skills" | ".claude/skills";
+} & (JsonClient | TomlClient | ManualClient);
 
 const local = () => ({ command: LOCAL_COMMAND.command, args: [...LOCAL_COMMAND.args] });
 
 export const CLIENTS: readonly Client[] = [
   {
     id: "claude",
+    docsUrl: "https://code.claude.com/docs/en/mcp",
+    skillDir: ".claude/skills",
     label: "Claude Code",
     aliases: ["claude-code"],
     kind: "json",
@@ -67,6 +77,8 @@ export const CLIENTS: readonly Client[] = [
   },
   {
     id: "codex",
+    docsUrl: "https://developers.openai.com/codex/mcp",
+    skillDir: ".agents/skills",
     label: "OpenAI Codex",
     aliases: ["openai"],
     kind: "toml",
@@ -79,6 +91,8 @@ export const CLIENTS: readonly Client[] = [
   },
   {
     id: "cursor",
+    docsUrl: "https://cursor.com/docs/context/mcp",
+    skillDir: ".agents/skills",
     label: "Cursor",
     aliases: [],
     kind: "json",
@@ -89,6 +103,8 @@ export const CLIENTS: readonly Client[] = [
   },
   {
     id: "vscode",
+    docsUrl: "https://code.visualstudio.com/docs/copilot/customization/mcp-servers",
+    skillDir: ".agents/skills",
     label: "VS Code (GitHub Copilot agent mode)",
     aliases: ["vs-code", "copilot-vscode"],
     kind: "json",
@@ -100,6 +116,8 @@ export const CLIENTS: readonly Client[] = [
   },
   {
     id: "roo",
+    docsUrl: "https://docs.roocode.com/features/mcp/using-mcp-in-roo",
+    skillDir: ".agents/skills",
     label: "Roo Code",
     aliases: ["roo-code"],
     kind: "json",
@@ -110,6 +128,8 @@ export const CLIENTS: readonly Client[] = [
   },
   {
     id: "gemini",
+    docsUrl: "https://geminicli.com/docs/tools/mcp-server/",
+    skillDir: ".agents/skills",
     label: "Gemini CLI",
     aliases: ["gemini-cli"],
     kind: "json",
@@ -120,6 +140,8 @@ export const CLIENTS: readonly Client[] = [
   },
   {
     id: "windsurf",
+    docsUrl: "https://docs.windsurf.com/windsurf/cascade/mcp",
+    skillDir: ".agents/skills",
     label: "Windsurf (Devin Desktop)",
     aliases: ["devin", "devin-desktop"],
     kind: "manual",
@@ -131,6 +153,8 @@ export const CLIENTS: readonly Client[] = [
   },
   {
     id: "cline",
+    docsUrl: "https://docs.cline.bot/mcp/configuring-mcp-servers",
+    skillDir: ".claude/skills",
     label: "Cline",
     aliases: [],
     kind: "manual",
@@ -143,6 +167,9 @@ export const CLIENTS: readonly Client[] = [
   },
   {
     id: "copilot",
+    docsUrl:
+      "https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp",
+    skillDir: ".agents/skills",
     label: "GitHub Copilot cloud agent",
     aliases: ["github", "copilot-agent"],
     kind: "manual",
@@ -159,4 +186,27 @@ export const CLIENTS: readonly Client[] = [
 export function findClient(name: string): Client | undefined {
   const wanted = name.trim().toLowerCase();
   return CLIENTS.find((c) => c.id === wanted || c.aliases.includes(wanted));
+}
+
+/**
+ * The exact config an agent needs, as the file (or place) and its text — what
+ * `mcp init` writes or prints, and what the docs page shows. One function, so
+ * the two can never disagree.
+ */
+export function configSnippet(
+  client: Client,
+  transport: Transport,
+): { file: string; language: "json" | "toml"; code: string } {
+  if (client.kind === "toml") {
+    return { file: client.file, language: "toml", code: client.entry(transport) };
+  }
+  return {
+    file: client.kind === "json" ? client.file : client.where,
+    language: "json",
+    code: JSON.stringify(
+      { [client.container]: { [SERVER_NAME]: client.entry(transport) } },
+      null,
+      2,
+    ),
+  };
 }

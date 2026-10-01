@@ -323,6 +323,13 @@ export default function DocsPage() {
               No component imports a Node built-in, so nothing needs a polyfill or a server runtime.
               Pick your package manager on any command below; the whole page follows.
             </p>
+            <p className="mt-3 text-sm leading-relaxed text-graphite">
+              Using an AI coding agent?{" "}
+              <Link href="/docs/ai" className={link}>
+                Connect it to ZoBlocks
+              </Link>{" "}
+              so it uses the real components instead of guessing.
+            </p>
           </DocSection>
 
           {/* ------------------------------------------------- install */}

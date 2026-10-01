@@ -68,6 +68,8 @@ const nextConfig: NextConfig = {
       "@zoblocks/identity-core": "../../packages/identity-core/dist/index.js",
       // The remote MCP endpoint (src/app/mcp/route.ts, ADR 0017).
       "@zoblocks/mcp": "../../packages/mcp/dist/index.js",
+      // Agent config shapes for /docs/ai — the ones `zoblocks mcp init` writes.
+      "@zoblocks/cli/agents": "../../packages/cli/dist/agents.js",
     },
   },
 

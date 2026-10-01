@@ -108,6 +108,11 @@ ${CODING_RULES.map((rule) => bullet(rule)).join("\n")}
 
 ${sections.join("\n\n")}
 
+## For coding agents
+
+- MCP server (read-only): ${HOMEPAGE}/mcp — or \`npx -y @zoblocks/mcp\`
+- Setup per agent: ${HOMEPAGE}/docs/ai
+
 ## Machine-readable catalog
 
 - Index: ${HOMEPAGE}/r/index.json

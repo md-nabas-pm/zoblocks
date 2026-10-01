@@ -8,4 +8,6 @@ Two commands for connecting coding agents to ZoBlocks.
 
 `zoblocks skill add` installs the ZoBlocks coding skill into `.agents/skills/` and `.claude/skills/`, skipping files you have changed unless `--overwrite` is passed.
 
+A new `@zoblocks/cli/agents` entry point exports the per-agent definitions (`CLIENTS`, `configSnippet`), which the docs site renders, so the docs and `mcp init` cannot disagree.
+
 Still no runtime dependencies.

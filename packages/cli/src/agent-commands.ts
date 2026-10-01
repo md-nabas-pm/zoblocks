@@ -11,7 +11,14 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { CLIENTS, SERVER_NAME, findClient, type Client, type Transport } from "./agents.js";
+import {
+  CLIENTS,
+  SERVER_NAME,
+  configSnippet,
+  findClient,
+  type Client,
+  type Transport,
+} from "./agents.js";
 import type { CommandContext } from "./commands.js";
 import { HOMEPAGE } from "./constants.js";
 
@@ -66,10 +73,7 @@ export async function mcpInit(context: CommandContext, options: McpInitOptions):
   if (client.kind === "manual") {
     out(`${client.label} keeps its MCP servers outside this project, so this prints the`);
     out(`entry rather than writing it. Add it under "${client.container}" in ${client.where}:`);
-    printBlock(
-      out,
-      JSON.stringify({ [client.container]: { [SERVER_NAME]: client.entry(transport) } }, null, 2),
-    );
+    printBlock(out, configSnippet(client, transport).code);
     out("");
     out(`  ${client.next}`);
     return 0;
@@ -111,7 +115,7 @@ async function writeJson(
   options: McpInitOptions,
 ): Promise<WriteResult> {
   const entry = client.entry(transport);
-  const snippet = JSON.stringify({ [client.container]: { [SERVER_NAME]: entry } }, null, 2);
+  const snippet = configSnippet(client, transport).code;
 
   let config: Record<string, unknown> = {};
   const exists = existsSync(file);
