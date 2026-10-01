@@ -88,6 +88,8 @@ export const paths = {
    */
   aiManifest: path.join(ROOT, "apps", "docs", "public", "ai", "manifest.json"),
   skillReferences: path.join(ROOT, "skills", "zoblocks", "references"),
+  /** The skill as one JSON document, fetched by `zoblocks skill add`. */
+  skillBundle: path.join(ROOT, "apps", "docs", "public", "ai", "skill.json"),
   coverage: path.join(ROOT, "apps", "docs", "public", "r", "coverage.json"),
   /** The npm React channel, generated from the registry source. */
   reactPackage: path.join(ROOT, "packages", "react"),

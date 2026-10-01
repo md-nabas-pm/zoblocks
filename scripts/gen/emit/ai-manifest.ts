@@ -18,6 +18,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   ALIAS_SETUP,
@@ -336,15 +337,51 @@ ${manifest.lintRules.map((rule) => `- \`${rule.id}\` — ${rule.description}`).j
 `;
 }
 
+/** Bumped when `zoblocks skill add` would have to change to read the bundle. */
+export const SKILL_BUNDLE_SCHEMA_VERSION = 1;
+
+/**
+ * The skill as one JSON document, the way a registry item carries its source:
+ * `zoblocks skill add` fetches it from the docs site and writes the files. The
+ * CLI stays dependency-free and does not need `@zoblocks/mcp` installed to
+ * get a skill that matches the catalog it is about.
+ *
+ * Built from the references this run just generated, not from disk, so the
+ * bundle and the committed files can never be from different runs.
+ */
+export async function buildSkillBundle(references: Record<string, string>) {
+  const skill = await readFile(path.join(paths.skillReferences, "..", "SKILL.md"), "utf8");
+  return {
+    schemaVersion: SKILL_BUNDLE_SCHEMA_VERSION,
+    name: "zoblocks",
+    files: [
+      { path: "SKILL.md", content: skill },
+      ...Object.entries(references).map(([file, content]) => ({
+        path: `references/${file}`,
+        content: content.endsWith("\n") ? content : `${content}\n`,
+      })),
+    ],
+  };
+}
+
 export async function emitAiManifest(
   catalog: ComponentDoc[],
   graph: RegistryGraphItem[],
   emitter: Emitter,
 ): Promise<AiManifest> {
   const manifest = buildAiManifest(catalog, graph);
+  const references = {
+    "components.md": componentsMd(manifest),
+    "frameworks.md": frameworksMd(manifest),
+    "conventions.md": conventionsMd(manifest),
+  };
   await emitter.emit(paths.aiManifest, JSON.stringify(manifest, null, 2));
-  await emitter.emit(path.join(paths.skillReferences, "components.md"), componentsMd(manifest));
-  await emitter.emit(path.join(paths.skillReferences, "frameworks.md"), frameworksMd(manifest));
-  await emitter.emit(path.join(paths.skillReferences, "conventions.md"), conventionsMd(manifest));
+  for (const [file, content] of Object.entries(references)) {
+    await emitter.emit(path.join(paths.skillReferences, file), content);
+  }
+  await emitter.emit(
+    paths.skillBundle,
+    JSON.stringify(await buildSkillBundle(references), null, 2),
+  );
   return manifest;
 }

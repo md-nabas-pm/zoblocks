@@ -11,10 +11,11 @@
  * Spec: https://agentskills.io/specification
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { parseSkillBundle } from "../packages/cli/src/agent-commands";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SKILL_DIR = path.join(ROOT, "skills", "zoblocks");
@@ -97,5 +98,35 @@ describe("everything the skill names exists", () => {
 
   it("never tells an agent to run the unpublished lint plugin", () => {
     expect(source).not.toMatch(/eslint-plugin/);
+  });
+});
+
+describe("the published skill bundle is the skill, in a form the CLI accepts", () => {
+  /*
+   * `pnpm gen` writes apps/docs/public/ai/skill.json and `zoblocks skill add`
+   * downloads it. This is the contract between them: the CLI's own parser
+   * accepts the real bundle, and every file in it is byte-for-byte the one
+   * committed in skills/zoblocks — so what an agent installs is what this
+   * repository reviewed.
+   */
+  const bundle = parseSkillBundle(
+    JSON.parse(readFileSync(path.join(ROOT, "apps/docs/public/ai/skill.json"), "utf8")),
+  );
+
+  it("is accepted by the CLI", () => {
+    expect(bundle.name).toBe("zoblocks");
+    expect(bundle.files.map((f) => f.path)).toContain("SKILL.md");
+  });
+
+  it("carries every committed file, unchanged", () => {
+    for (const file of bundle.files) {
+      expect(file.content, file.path).toBe(readFileSync(path.join(SKILL_DIR, file.path), "utf8"));
+    }
+    expect(bundle.files.map((f) => f.path).sort()).toEqual(
+      [
+        "SKILL.md",
+        ...readdirSync(path.join(SKILL_DIR, "references")).map((f) => `references/${f}`),
+      ].sort(),
+    );
   });
 });
