@@ -1,6 +1,8 @@
 {
   "name": "@zoblocks/mcp",
   "version": "0.0.0",
+  "//mcpName": "The MCP Registry reads this from the published tarball to prove @zoblocks/mcp belongs to the server.json named design.zoblocks/mcp. Must equal its name.",
+  "mcpName": "design.zoblocks/mcp",
   "description": "A read-only MCP server that lets coding agents look up ZoBlocks components, their props and examples, and the setup for each framework and UI style — so they use the library instead of guessing at it.",
   "license": "MIT",
   "homepage": "https://zoblocks.design",

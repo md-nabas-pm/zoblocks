@@ -103,6 +103,19 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // The catalog manifest and skill bundle coding agents read (ADR 0017),
+        // fetched by @zoblocks/mcp and the CLI from anywhere. Cached like the
+        // registry: an hour at the edge, so a deploy reaches agents within one.
+        source: "/ai/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
     ];
   },
 };
