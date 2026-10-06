@@ -1,4 +1,5 @@
 node_modules
+.ai-evals
 # Local agent worktrees: whole checkouts of other branches, never committed here.
 .claude
 .next

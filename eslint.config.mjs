@@ -60,6 +60,8 @@ export default tseslint.config(
       // Generated. Lint the generator, not its output.
       "apps/docs/src/lib/generated/**",
       "apps/docs/public/**",
+      // Agent-eval runs (scripts/ai-evals): whole generated apps, each with its own config.
+      ".ai-evals/**",
       // Written by Next on every build.
       "apps/docs/next-env.d.ts",
       "apps/hq/next-env.d.ts",

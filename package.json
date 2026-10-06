@@ -15,6 +15,7 @@
   },
   "scripts": {
     "a11y": "tsx scripts/a11y.ts",
+    "ai-evals": "tsx scripts/ai-evals/run.ts",
     "build": "turbo run build",
     "changeset": "changeset",
     "conformance": "tsx scripts/conformance.ts",

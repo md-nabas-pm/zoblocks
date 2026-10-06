@@ -28,6 +28,8 @@ apps/docs/public/ai/*.json
 *.key
 
 # test output
+# Agent evaluation runs and reports (scripts/ai-evals): whole apps per run.
+.ai-evals/
 coverage/
 playwright-report/
 test-results/
