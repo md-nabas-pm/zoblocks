@@ -174,10 +174,13 @@ upstream issue.
 
 Until one of those lands, CI publishes with `NPM_TOKEN` and ships unattested.
 
-Before any release: `pnpm build && pnpm release:check`. It packs every
-publishable package with pnpm and fails on a missing README or LICENSE, an entry
-point absent from the tarball, a leftover `workspace:` range, test files, or an
-import Node cannot resolve. CI and `publish.yml` run the same script — and
+Before any release: `pnpm gen && pnpm build && pnpm release:check`. It packs
+every publishable package with pnpm and fails on a missing README or LICENSE, an
+entry point absent from the tarball, a leftover `workspace:` range, test files,
+or an import Node cannot resolve. `gen` comes first because `@zoblocks/mcp`
+bundles the generated catalog manifest; its own `scripts/check-tarball.mjs`
+fails a bundled catalog that does not match the one `gen` just wrote, and its
+build is never cached (`turbo.json`) so a cache hit cannot restore a stale one. CI and `publish.yml` run the same script — and
 `publish.yml` runs it even under `skip-checks`, because it is the one assertion
 that is about the artifact rather than about the source.
 
@@ -222,7 +225,7 @@ then `changeset publish`.
    and writes the CHANGELOG entries. Do it before publishing, not after: the
    changes those changesets describe are already in the code, so publishing
    first ships them under a version whose changelog does not mention them.
-3. **Prove the permission on one package.** `pnpm build`, then
+3. **Prove the permission on one package.** `pnpm gen && pnpm build`, then
    `cd packages/intl && pnpm publish --access public --no-git-checks`.
 
    pnpm, never npm — `publishConfig` here rewrites `main`, `types` and

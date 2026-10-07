@@ -108,6 +108,14 @@ jobs:
       #
       # `gates` ran on its own runner, so its dist is not here; with a warm
       # Turbo cache this is a restore rather than a rebuild.
+      #
+      # `pnpm gen` first, for the same reason: the gates' generated files are on
+      # their runner too, and @zoblocks/mcp bundles one of them — the catalog
+      # manifest — into its tarball. Without it the build stops; its own
+      # check-tarball.mjs fails a bundled catalog that does not match.
+      - name: Generate
+        run: pnpm gen
+
       - name: Build
         run: pnpm build
 
