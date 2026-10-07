@@ -196,8 +196,14 @@ async function grade(
   const sheets = walk(path.join(src, "styles"))
     .map((f) => path.basename(f))
     .filter((f) => /^zoblocks-.*\.css$/.test(f));
-  const globalCssPath = path.join(src, "app", "globals.css");
-  const globalCss = existsSync(globalCssPath) ? readFileSync(globalCssPath, "utf8") : undefined;
+  // Where each framework keeps it, as get_framework_rules names it: Next.js
+  // App Router, then Pages Router, then Vite. `--grade` takes any of them.
+  const globalCssPath = [
+    path.join(src, "app", "globals.css"),
+    path.join(src, "styles", "globals.css"),
+    path.join(src, "index.css"),
+  ].find((file) => existsSync(file));
+  const globalCss = globalCssPath ? readFileSync(globalCssPath, "utf8") : undefined;
 
   let typecheck: Finding;
   try {
