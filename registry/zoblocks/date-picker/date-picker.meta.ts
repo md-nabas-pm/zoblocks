@@ -74,6 +74,9 @@ export default defineComponentMeta({
     "Series — conflicts resolved before anything is written",
     "Group — the room, the roster and the real count",
     "Read-only — the record a reviewer sees",
+    "Recommended dates — marked, explained, never chosen for you",
+    "Dates with events — marked under the numeral, details on hover and focus",
+    "Quick actions — the workflow's shortcuts above the grid, and the Recommended view",
   ],
 
   a11y: [
@@ -106,6 +109,16 @@ export default defineComponentMeta({
       label: "Colour is never the only channel",
       detail:
         "Today is a dot as well as a weight, an unavailable day is struck as well as dimmed, and a held session member carries a lock glyph and the word Held beside its tint. All three survive greyscale, forced-colors and a red-green deficiency.",
+    },
+    {
+      label: "A recommendation is said, not only shown",
+      detail:
+        'A recommended day carries its reason and checks in its accessible name — "September 24, 2026, recommended: 2 weeks after the procedure, Provider available" — and a day with events lists them. The dark tooltip is a second channel for sighted readers and is aria-hidden, so nothing is announced twice. Escape closes the tooltip before it closes the calendar.',
+    },
+    {
+      label: "Quick actions are one toolbar, and say what they do",
+      detail:
+        'The bar above the grid is a single tab stop with arrow keys between actions. A date action\'s name includes the date it resolves to ("+7 days, Wednesday, September 2, 2026"), so its result is known before it is pressed, and an action whose date is closed is disabled with the reason.',
     },
     {
       label: "The value never mirrors in RTL",

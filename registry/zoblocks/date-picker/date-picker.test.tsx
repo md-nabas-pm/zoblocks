@@ -30,6 +30,8 @@ import {
   RecurrenceField,
   RecurringSeriesScheduler,
   TimeSlotGrid,
+  quickActionsFor,
+  recommendationFromWindow,
   relativeDateOptions,
   segmentsToTime,
   timeGrid,
@@ -61,6 +63,7 @@ import {
   timeRangeMinutes,
   toIsoDate,
   withSessionEnd,
+  type CalendarEvent,
   type ZbDate,
 } from "@/lib/zoblocks-datetime";
 import { expectInteractivesAreNamed, expectRendersSomething } from "../../../test/contract";
@@ -4679,5 +4682,395 @@ describe("on a phone the popover is a bottom sheet", () => {
     } finally {
       media.restore();
     }
+  });
+});
+
+/* ================================================================== */
+/* Smart behaviour — recommended dates, events, quick actions         */
+/* ================================================================== */
+
+describe("Calendar smart behaviour", () => {
+  const SEPTEMBER = { y: 2026, m: 9 };
+  const WINDOW = {
+    start: plainDate(2026, 9, 21),
+    end: plainDate(2026, 9, 28),
+    summary: "Follow-up is recommended 7–14 days after the procedure on 14 September 2026.",
+  };
+  const ADVICE = {
+    reason: "2 weeks after the procedure, within the follow-up window",
+    checks: ["Provider available", "No scheduling conflicts"],
+  };
+  const recommended = recommendationFromWindow(WINDOW, ADVICE);
+  const events = (date: ZbDate): CalendarEvent[] | null =>
+    date.m === 9 && date.d === 22
+      ? [
+          { id: "a", label: "Follow-up", time: "10:00 AM" },
+          { id: "b", label: "Consultation", time: "2:30 PM", tone: "info" },
+          { id: "c", label: "Lab draw" },
+          { id: "d", label: "Group" },
+        ]
+      : null;
+  const day = (d: number) =>
+    screen.getByRole("gridcell", { name: new RegExp(`September ${d}, 2026`) });
+
+  it("renders exactly as before when none of the new props are passed", () => {
+    const { container } = render(<Calendar now={TODAY} defaultMonth={SEPTEMBER} />);
+    expect(container.querySelector(".zb-dt-cal__quick")).toBeNull();
+    expect(container.querySelector(".zb-dt-cal__top")).toBeNull();
+    expect(container.querySelector(".zb-dt-cal__events")).toBeNull();
+    expect(container.querySelector(".zb-dt-cal__day--recommended")).toBeNull();
+    expect(day(22).getAttribute("aria-label")).toMatch(/September 22, 2026$/);
+  });
+
+  it.each(["outline", "fill", "icon"] as const)(
+    "marks a recommended day with the %s treatment and says why",
+    (appearance) => {
+      const { container } = render(
+        <Calendar
+          now={TODAY}
+          defaultMonth={SEPTEMBER}
+          recommended={recommended}
+          recommendedAppearance={appearance}
+        />,
+      );
+      const cell = day(24);
+      expect(cell.className).toContain("zb-dt-cal__day--recommended");
+      expect(cell.className).toContain(`zb-dt-cal__day--rec-${appearance}`);
+      expect(cell.getAttribute("aria-label")).toContain(`recommended: ${ADVICE.reason}`);
+      expect(cell.getAttribute("aria-label")).toContain("Provider available");
+      expect(container.querySelectorAll(".zb-dt-cal__rec-mark").length).toBe(
+        appearance === "icon" ? 8 : 0,
+      );
+      expect(day(20).className).not.toContain("zb-dt-cal__day--recommended");
+    },
+  );
+
+  it("guides rather than forces: a recommended day is selectable, and so is every other", () => {
+    const onChange = vi.fn();
+    render(
+      <Calendar
+        now={TODAY}
+        defaultMonth={SEPTEMBER}
+        recommended={recommended}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(day(24));
+    fireEvent.click(day(3));
+    expect(onChange.mock.calls.map(([date]) => toIsoDate(date))).toEqual([
+      "2026-09-24",
+      "2026-09-03",
+    ]);
+  });
+
+  it("does not recommend a day that cannot be chosen — the closed reason wins", () => {
+    render(
+      <Calendar
+        now={TODAY}
+        defaultMonth={SEPTEMBER}
+        recommended={recommended}
+        unavailable={(date) => (date.d === 23 ? "Clinic closed" : null)}
+      />,
+    );
+    const cell = day(23);
+    expect(cell.className).not.toContain("zb-dt-cal__day--recommended");
+    expect(cell.getAttribute("aria-label")).toContain("Clinic closed");
+    expect(cell.getAttribute("aria-label")).not.toContain("recommended");
+  });
+
+  it("shows why on hover and on focus, and Escape closes the tip first", () => {
+    render(<Calendar now={TODAY} defaultMonth={SEPTEMBER} recommended={recommended} />);
+    fireEvent.mouseEnter(day(24));
+    const tip = document.body.querySelector(".zb-dt-tip");
+    expect(tip?.textContent).toContain("Why this date?");
+    expect(tip?.textContent).toContain(ADVICE.reason);
+    expect(tip?.textContent).toContain("No scheduling conflicts");
+    // A visual channel only; the name already carries it.
+    expect(tip?.getAttribute("aria-hidden")).toBe("true");
+    fireEvent.mouseLeave(day(24));
+    expect(document.body.querySelector(".zb-dt-tip")).toBeNull();
+
+    act(() => day(25).focus());
+    expect(document.body.querySelector(".zb-dt-tip")).not.toBeNull();
+    const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    const later = vi.fn();
+    document.addEventListener("keydown", later, true);
+    act(() => {
+      day(25).dispatchEvent(escape);
+    });
+    document.removeEventListener("keydown", later, true);
+    expect(document.body.querySelector(".zb-dt-tip")).toBeNull();
+    // Swallowed before the popover's own listener could close the panel.
+    expect(later).not.toHaveBeenCalled();
+  });
+
+  it("marks events under the numeral, capped at three, and lists them in the name", () => {
+    render(
+      <Calendar
+        now={TODAY}
+        defaultMonth={SEPTEMBER}
+        events={events}
+        eventsLabel={(list) => `${list.length} Appointments scheduled`}
+      />,
+    );
+    const cell = day(22);
+    expect(cell.querySelectorAll(".zb-dt-cal__events i").length).toBe(3);
+    expect(cell.getAttribute("aria-label")).toContain(
+      "4 Appointments scheduled: 10:00 AM Follow-up, 2:30 PM Consultation, Lab draw, Group",
+    );
+    fireEvent.mouseEnter(cell);
+    const tip = document.body.querySelector(".zb-dt-tip");
+    expect(tip?.textContent).toContain("4 Appointments scheduled");
+    expect(tip?.textContent).toContain("10:00 AM — Follow-up");
+    expect(tip?.querySelector('[data-tone="info"]')).not.toBeNull();
+  });
+
+  it("keeps a day with events selectable", () => {
+    const onChange = vi.fn();
+    render(<Calendar now={TODAY} defaultMonth={SEPTEMBER} events={events} onChange={onChange} />);
+    fireEvent.click(day(22));
+    expect(toIsoDate(onChange.mock.calls[0]![0])).toBe("2026-09-22");
+  });
+
+  it("builds the spec's quick-action sets", () => {
+    const labels = (context: Parameters<typeof quickActionsFor>[0]) =>
+      quickActionsFor(context, TODAY).map((action) => action.label);
+    expect(labels("follow-up")).toEqual(["Recommended", "+7 days", "+14 days"]);
+    expect(labels("appointment")).toEqual(["Today", "Tomorrow", "This week"]);
+    expect(labels("procedure")).toEqual(["Recommended", "Today", "Tomorrow"]);
+    expect(labels("medication-review")).toEqual(["+14 days", "+30 days", "Recommended"]);
+    expect(labels("discharge")).toEqual(["Today", "Tomorrow"]);
+    expect(labels("documentation")).toEqual(["Today", "Yesterday", "7 days ago"]);
+    expect(labels("lab-monitoring")).toEqual(["Recommended", "+7 days", "+30 days"]);
+
+    const dates = (context: Parameters<typeof quickActionsFor>[0], weekStart?: number) =>
+      quickActionsFor(context, TODAY, { weekStart }).flatMap((action) =>
+        action.kind === "date" ? [toIsoDate(action.date)] : [],
+      );
+    expect(dates("follow-up")).toEqual(["2026-09-02", "2026-09-09"]);
+    expect(dates("documentation")).toEqual(["2026-08-26", "2026-08-25", "2026-08-19"]);
+    // Wednesday 26 August: Saturday ends a Sunday week, Sunday a Monday week.
+    expect(dates("appointment", 0)[2]).toBe("2026-08-29");
+    expect(dates("appointment", 1)[2]).toBe("2026-08-30");
+  });
+
+  it("puts the quick actions above the grid in one tab stop, each naming the date it resolves to", () => {
+    const { container } = render(
+      <Calendar now={TODAY} quickActions={quickActionsFor("discharge", TODAY)} />,
+    );
+    const bar = screen.getByRole("toolbar", { name: "Quick actions" });
+    expect(container.querySelector(".zb-dt-cal__top")?.nextElementSibling?.className).toContain(
+      "zb-dt-cal__months",
+    );
+    const [today, tomorrow] = within(bar).getAllByRole("button");
+    expect(today!.getAttribute("aria-label")).toMatch(/^Today, .*August 26, 2026$/);
+    expect(tomorrow!.getAttribute("aria-label")).toMatch(/^Tomorrow, .*August 27, 2026$/);
+    expect([today!.tabIndex, tomorrow!.tabIndex]).toEqual([0, -1]);
+
+    act(() => today!.focus());
+    fireEvent.keyDown(bar, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(tomorrow);
+  });
+
+  it("selects through a date action, brings its month into view, and shows it pressed", () => {
+    const onChange = vi.fn();
+    render(
+      <Calendar
+        now={TODAY}
+        quickActions={quickActionsFor("follow-up", TODAY).filter(
+          (action) => action.kind === "date",
+        )}
+        onChange={onChange}
+      />,
+    );
+    const plus7 = screen.getByRole("button", { name: /^\+7 days/ });
+    fireEvent.click(plus7);
+    expect(toIsoDate(onChange.mock.calls[0]![0])).toBe("2026-09-02");
+    expect(plus7.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("grid", { name: "September 2026" })).toBeTruthy();
+  });
+
+  it("holds a date action behind Done when the calendar commits explicitly", () => {
+    const onChange = vi.fn();
+    render(
+      <Calendar
+        now={TODAY}
+        commit="explicit"
+        quickActions={quickActionsFor("discharge", TODAY)}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Tomorrow/ }));
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(toIsoDate(onChange.mock.calls[0]![0])).toBe("2026-08-27");
+  });
+
+  it("toggles rather than replaces in multiple mode", () => {
+    const onDatesChange = vi.fn();
+    render(
+      <Calendar
+        mode="multiple"
+        now={TODAY}
+        defaultDates={[plainDate(2026, 8, 3)]}
+        quickActions={quickActionsFor("discharge", TODAY)}
+        onDatesChange={onDatesChange}
+      />,
+    );
+    const today = screen.getByRole("button", { name: /^Today/ });
+    fireEvent.click(today);
+    fireEvent.click(today);
+    expect(onDatesChange.mock.calls.map(([dates]) => dates.map(toIsoDate))).toEqual([
+      ["2026-08-03", "2026-08-26"],
+      ["2026-08-03"],
+    ]);
+  });
+
+  it("refuses an unavailable date action and says why", () => {
+    const onChange = vi.fn();
+    render(
+      <Calendar
+        now={TODAY}
+        quickActions={quickActionsFor("discharge", TODAY)}
+        unavailable={(date) => (date.d === 27 ? "Ward closed" : null)}
+        onChange={onChange}
+      />,
+    );
+    const tomorrow = screen.getByRole("button", { name: /^Tomorrow/ });
+    expect(tomorrow.getAttribute("aria-disabled")).toBe("true");
+    expect(tomorrow.getAttribute("aria-label")).toContain("unavailable, Ward closed");
+    fireEvent.click(tomorrow);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("does not draw a Recommended action without a window to show", () => {
+    render(<Calendar now={TODAY} quickActions={quickActionsFor("procedure", TODAY)} />);
+    const bar = screen.getByRole("toolbar", { name: "Quick actions" });
+    expect(
+      within(bar)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Today", "Tomorrow"]);
+  });
+
+  it("switches to the Recommended view without changing the value, and back", () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Calendar
+        now={TODAY}
+        defaultMonth={SEPTEMBER}
+        recommended={recommended}
+        recommendation={WINDOW}
+        events={events}
+        unavailable={(date) => (date.m === 9 && date.d === 26 ? "Clinic closed" : null)}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+        onChange={onChange}
+      />,
+    );
+    const bar = screen.getByRole("toolbar", { name: "Quick actions" });
+    expect(
+      within(bar)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Calendar", "Recommended", "+7 days", "+14 days"]);
+    const calendar = within(bar).getByRole("button", { name: "Calendar" });
+    const recommendedButton = within(bar).getByRole("button", { name: "Recommended" });
+    expect(calendar.getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(recommendedButton);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(recommendedButton.getAttribute("aria-pressed")).toBe("true");
+    expect(calendar.getAttribute("aria-pressed")).toBe("false");
+    expect(container.textContent).toContain(WINDOW.summary);
+
+    // Only the window's selectable days: 21–28 less the closed 26th.
+    const cells = screen
+      .getAllByRole("gridcell")
+      .map((cell) => cell.textContent?.replace(/\D/g, ""));
+    expect(cells).toEqual(["21", "22", "23", "24", "25", "27", "28"]);
+    expect(day(22).querySelectorAll(".zb-dt-cal__events i").length).toBe(3);
+    expect(day(21).className).toContain("zb-dt-cal__day--recommended");
+
+    fireEvent.click(day(23));
+    expect(toIsoDate(onChange.mock.calls[0]![0])).toBe("2026-09-23");
+    // Choosing does not leave the view.
+    expect(recommendedButton.getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(calendar);
+    expect(screen.getByRole("grid", { name: "September 2026" })).toBeTruthy();
+    expect(screen.getAllByRole("gridcell").length).toBeGreaterThan(28);
+  });
+
+  it("groups a window that crosses a month by month, and collapses a month", () => {
+    render(
+      <Calendar
+        now={TODAY}
+        recommendation={{ start: plainDate(2026, 9, 28), end: plainDate(2026, 10, 3) }}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+        defaultView="recommended"
+      />,
+    );
+    expect(screen.getByRole("grid", { name: "September 2026" })).toBeTruthy();
+    expect(screen.getByRole("grid", { name: "October 2026" })).toBeTruthy();
+    const head = screen.getByRole("button", { name: "October 2026" });
+    expect(head.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(head);
+    expect(head.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("grid", { name: "October 2026" })).toBeNull();
+  });
+
+  it("keeps one tab stop in the Recommended view and moves along the list with arrows", () => {
+    const onChange = vi.fn();
+    render(
+      <Calendar
+        now={TODAY}
+        recommendation={WINDOW}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+        defaultView="recommended"
+        onChange={onChange}
+      />,
+    );
+    const stops = screen.getAllByRole("gridcell").filter((cell) => cell.tabIndex === 0);
+    expect(stops.map((cell) => cell.textContent)).toEqual(["21"]);
+    act(() => stops[0]!.focus());
+    fireEvent.keyDown(stops[0]!, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(day(22));
+    fireEvent.keyDown(day(22), { key: "End" });
+    expect(document.activeElement).toBe(day(28));
+    fireEvent.keyDown(day(28), { key: "Enter" });
+    expect(toIsoDate(onChange.mock.calls[0]![0])).toBe("2026-09-28");
+  });
+
+  it("forwards everything from the picker to its popover calendar", async () => {
+    const user = userEvent.setup();
+    render(
+      <DatePicker
+        variant="picker"
+        label="Follow-up date"
+        now={TODAY}
+        calendarRecommended={recommended}
+        calendarRecommendation={WINDOW}
+        calendarEvents={events}
+        calendarQuickActions={quickActionsFor("follow-up", TODAY)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /calendar/i }));
+    expect(screen.getByRole("toolbar", { name: "Quick actions" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Recommended" }));
+    expect(day(24).getAttribute("aria-label")).toContain("recommended");
+  });
+
+  it("names every interactive in the smart calendar", () => {
+    const view = render(
+      <Calendar
+        now={TODAY}
+        defaultMonth={SEPTEMBER}
+        recommended={recommended}
+        recommendation={WINDOW}
+        events={events}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+      />,
+    );
+    expectInteractivesAreNamed(view);
   });
 });

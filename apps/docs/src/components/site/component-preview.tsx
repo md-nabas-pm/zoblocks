@@ -137,14 +137,20 @@ import {
   SessionTimeField,
   TimeField,
   TimeRangeField,
+  quickActionsFor,
+  recommendationFromWindow,
   timeGrid,
 } from "@/registry/zoblocks/date-picker/date-picker";
 import {
   dateRangePresets,
+  formatPlainDate,
   plainDate,
   plainTime,
   sessionFrom,
+  weekdayOf,
   withSessionEnd,
+  type CalendarEvent,
+  type ZbDate,
 } from "@/lib/zoblocks-datetime";
 type Density = "patient" | "standard" | "clinical";
 
@@ -1480,6 +1486,44 @@ const DT_BANDS = [
   { minMinutes: 53, maxMinutes: 999, code: "LONG", label: "Extended session" },
 ];
 
+/** "Follow-up 7–14 days after the procedure on 14 September 2026." */
+const DT_FOLLOW_UP_WINDOW = {
+  start: plainDate(2026, 9, 21),
+  end: plainDate(2026, 9, 28),
+  summary: "Follow-up is recommended 7–14 days after the procedure on 14 September 2026.",
+};
+
+const DT_FOLLOW_UP = recommendationFromWindow(DT_FOLLOW_UP_WINDOW, {
+  reason: "2 weeks after the patient's procedure, within the recommended follow-up window.",
+  checks: ["Provider available", "No scheduling conflicts"],
+});
+
+const DT_SCHEDULE: Record<string, CalendarEvent[]> = {
+  "2026-09-03": [{ id: "e1", label: "Lab draw", time: "8:00 AM", tone: "info" }],
+  "2026-09-08": [
+    { id: "e2", label: "Follow-up", time: "10:00 AM" },
+    { id: "e3", label: "Consultation", time: "2:30 PM" },
+  ],
+  "2026-09-23": [{ id: "e4", label: "Group session", time: "4:00 PM" }],
+  "2026-09-28": [
+    { id: "e5", label: "Medication review", time: "9:00 AM" },
+    { id: "e6", label: "Therapy", time: "11:00 AM" },
+  ],
+};
+
+function dtScheduleOn(date: ZbDate): CalendarEvent[] | null {
+  return DT_SCHEDULE[formatPlainDate(date, "iso")] ?? null;
+}
+
+function dtAppointments(events: readonly CalendarEvent[]): string {
+  return `${events.length} Appointment${events.length === 1 ? "" : "s"} scheduled`;
+}
+
+function dtWeekend(date: ZbDate): string | null {
+  const day = weekdayOf(date);
+  return day === 0 || day === 6 ? "Weekend — clinic closed" : null;
+}
+
 function DtStage({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-wrap items-start gap-8">{children}</div>;
 }
@@ -2301,6 +2345,90 @@ gridCapacityRefusal(120_000);
             defaultRange={{ start: plainDate(2026, 8, 17), end: plainDate(2026, 9, 11) }}
           />
           <Calendar mode="multiple" maxDates={4} now={DT_TODAY} defaultMonth={{ y: 2026, m: 9 }} />
+        </DtStage>
+      ),
+    },
+    {
+      id: "recommended",
+      label: "Recommended dates, and why",
+      group: "Calendar",
+      note: "A recommendation always says why. The day is ringed, never selected, and the reason — with the checks the host verified — is in the day's name and in the tooltip on hover or focus. Every other open day stays selectable, and a closed day is not marked whatever the rule says. Outline is the default because a filled day reads as already chosen; fill and icon are the two alternatives, each with a channel that is not hue.",
+      render: () => (
+        <DtStage>
+          {(["outline", "fill", "icon"] as const).map((appearance) => (
+            <Calendar
+              key={appearance}
+              now={DT_TODAY}
+              weekStart={1}
+              defaultMonth={{ y: 2026, m: 9 }}
+              defaultValue={plainDate(2026, 9, 10)}
+              unavailable={dtWeekend}
+              recommended={DT_FOLLOW_UP}
+              recommendedAppearance={appearance}
+              events={dtScheduleOn}
+              eventsLabel={dtAppointments}
+              hints
+            />
+          ))}
+        </DtStage>
+      ),
+    },
+    {
+      id: "events",
+      label: "Dates with events",
+      group: "Calendar",
+      note: "Short bars under the numeral, one per event and three at most — bars rather than dots, so an event is never mistaken for the today dot or the availability dots. Hover or focus a marked day for the list; a screen reader hears it in the day's name. Events never block: a day the host considers full is unavailable, with a reason.",
+      render: () => (
+        <DtStage>
+          <Calendar
+            now={DT_TODAY}
+            weekStart={1}
+            defaultMonth={{ y: 2026, m: 9 }}
+            unavailable={dtWeekend}
+            events={dtScheduleOn}
+            eventsLabel={dtAppointments}
+            hints
+          />
+        </DtStage>
+      ),
+    },
+    {
+      id: "quick-actions",
+      label: "Contextual quick actions",
+      group: "Calendar",
+      note: "The workflow's predictable answers sit above the grid. A follow-up offers Recommended · +7 days · +14 days; each date action names the date it resolves to, so the result is known before the press. Recommended picks nothing — it switches to the window's open days, grouped by month, under the rule that produced them, and Calendar goes back.",
+      render: () => (
+        <DtStage>
+          <Calendar
+            now={DT_TODAY}
+            weekStart={1}
+            unavailable={dtWeekend}
+            recommended={DT_FOLLOW_UP}
+            recommendation={DT_FOLLOW_UP_WINDOW}
+            events={dtScheduleOn}
+            eventsLabel={dtAppointments}
+            quickActions={quickActionsFor("follow-up", DT_TODAY, { weekStart: 1 })}
+            hints
+          />
+          <Calendar
+            now={DT_TODAY}
+            weekStart={1}
+            unavailable={dtWeekend}
+            recommended={DT_FOLLOW_UP}
+            recommendation={DT_FOLLOW_UP_WINDOW}
+            events={dtScheduleOn}
+            eventsLabel={dtAppointments}
+            quickActions={quickActionsFor("follow-up", DT_TODAY, { weekStart: 1 })}
+            defaultView="recommended"
+            hints
+          />
+          <DateField
+            label="Discharge date"
+            showCalendar
+            now={DT_TODAY}
+            unavailable={dtWeekend}
+            calendarQuickActions={quickActionsFor("discharge", DT_TODAY)}
+          />
         </DtStage>
       ),
     },

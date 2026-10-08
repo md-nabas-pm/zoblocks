@@ -387,6 +387,71 @@ export interface DateRangePreset {
 }
 
 /**
+ * Why a date is recommended.
+ *
+ * A reason rather than a flag, because a recommendation with no reason is an
+ * instruction, and the calendar guides rather than decides. `checks` are the
+ * conditions the host verified — "Provider available" — shown as ticks under
+ * the reason and read out after it.
+ */
+export interface DateRecommendation {
+  reason: string;
+  checks?: readonly string[];
+}
+
+/** How a recommended day is marked. All three survive greyscale. */
+export type RecommendedAppearance = "outline" | "fill" | "icon";
+
+/**
+ * The window a recommendation was drawn from — "7–14 days after the
+ * procedure". It drives the Recommended view, which lists only these days.
+ */
+export interface RecommendationWindow {
+  start: ZbDate;
+  end: ZbDate;
+  /** The rule, in words, above the list. Say where the window comes from. */
+  summary?: string;
+}
+
+/** Colour of an event's marker. A tone, not a hex, so the theme decides. */
+export type CalendarEventTone = "warning" | "info" | "success" | "danger";
+
+/**
+ * Something already on a day — an appointment, a procedure, a lab draw.
+ *
+ * Marked, never blocking: a day with an event is still selectable unless the
+ * host also says it is unavailable.
+ */
+export interface CalendarEvent {
+  id: string;
+  label: string;
+  /** Pre-formatted, so the host's clock and locale decide — "10:00 AM". */
+  time?: string;
+  tone?: CalendarEventTone;
+}
+
+/**
+ * One press above the grid.
+ *
+ * `date` selects through the same path a click does; `recommended` and
+ * `calendar` switch what the panel shows and never change the value.
+ */
+export type QuickAction =
+  | { kind: "date"; id: string; label: string; date: ZbDate }
+  | { kind: "recommended"; id: string; label: string }
+  | { kind: "calendar"; id: string; label: string };
+
+/** The workflows the spec names quick-action sets for. */
+export type QuickActionContext =
+  | "follow-up"
+  | "appointment"
+  | "procedure"
+  | "medication-review"
+  | "discharge"
+  | "documentation"
+  | "lab-monitoring";
+
+/**
  * The seven named periods that answer most range questions.
  *
  * Exported as data rather than rendered inside the calendar, for the same

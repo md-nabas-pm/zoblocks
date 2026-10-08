@@ -13,13 +13,13 @@
  * change, because customers style against these names. The manifest is
  * committed so that change shows up as a reviewable diff.
  *
- * 361 tokens across 32 components:
+ * 373 tokens across 32 components:
  *
  *   switch          55
  *   tabs            44
  *   banner          39
+ *   datetime        39
  *   accordion       29
- *   datetime        27
  *   badge           16
  *   field           14
  *   grid            13
@@ -48,7 +48,7 @@
  *   risk             1
  *   stack            1
  *
- * `bridgeable: false` (91 tokens) marks the ones resolving to clinical
+ * `bridgeable: false` (96 tokens) marks the ones resolving to clinical
  * status or an identity flag. A host framework's `colorError` is not our
  * `status.critical`: ours carries a validated contrast floor and a 60° hue
  * separation from `status.low`, so the direction of an abnormal result
@@ -1676,6 +1676,46 @@ export const TOKEN_SURFACE: readonly SurfaceEntry[] = [
     "bridgeable": true
   },
   {
+    "name": "--zb-datetime-event-danger",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-status-critical",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": false
+  },
+  {
+    "name": "--zb-datetime-event-info",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-status-low",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": false
+  },
+  {
+    "name": "--zb-datetime-event-success",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-status-normal",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": false
+  },
+  {
+    "name": "--zb-datetime-event-warning",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-status-high",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": false
+  },
+  {
     "name": "--zb-datetime-font",
     "component": "datetime",
     "source": "packages/tokens/tokens/component.json",
@@ -1726,11 +1766,91 @@ export const TOKEN_SURFACE: readonly SurfaceEntry[] = [
     "bridgeable": true
   },
   {
+    "name": "--zb-datetime-rec-bg",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-swatch-4-bg",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": true
+  },
+  {
+    "name": "--zb-datetime-rec-mark",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-swatch-4",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": true
+  },
+  {
+    "name": "--zb-datetime-rec-mark-inverse",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-swatch-4-border",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": true
+  },
+  {
+    "name": "--zb-datetime-rec-ring",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-swatch-4-border",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": true
+  },
+  {
     "name": "--zb-datetime-target",
     "component": "datetime",
     "source": "packages/tokens/tokens/component.json",
     "kind": "dimension",
     "semantic": "--zb-density-target",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": true
+  },
+  {
+    "name": "--zb-datetime-tip-bg",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-text",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": true
+  },
+  {
+    "name": "--zb-datetime-tip-check",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-status-normal-border",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": false
+  },
+  {
+    "name": "--zb-datetime-tip-fg",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-bg",
+    "frameworks": [],
+    "fallback": true,
+    "bridgeable": true
+  },
+  {
+    "name": "--zb-datetime-tip-muted",
+    "component": "datetime",
+    "source": "packages/tokens/tokens/component.json",
+    "kind": "color",
+    "semantic": "--zb-bg-subtle",
     "frameworks": [],
     "fallback": true,
     "bridgeable": true
@@ -3882,7 +4002,14 @@ export const BRIDGEABLE: readonly string[] = [
   "--zb-datetime-held-fg",
   "--zb-datetime-popover-bg",
   "--zb-datetime-popover-border",
+  "--zb-datetime-rec-bg",
+  "--zb-datetime-rec-mark",
+  "--zb-datetime-rec-mark-inverse",
+  "--zb-datetime-rec-ring",
   "--zb-datetime-target",
+  "--zb-datetime-tip-bg",
+  "--zb-datetime-tip-fg",
+  "--zb-datetime-tip-muted",
   "--zb-datetime-today-marker",
   "--zb-datetime-weekday-fg",
   "--zb-dt-fade-dir",
@@ -4111,6 +4238,11 @@ export const NOT_BRIDGEABLE: readonly string[] = [
   "--zb-cs-bg",
   "--zb-cs-border",
   "--zb-cs-fg",
+  "--zb-datetime-event-danger",
+  "--zb-datetime-event-info",
+  "--zb-datetime-event-success",
+  "--zb-datetime-event-warning",
+  "--zb-datetime-tip-check",
   "--zb-field-border-invalid",
   "--zb-field-error-fg",
   "--zb-presence-ring",

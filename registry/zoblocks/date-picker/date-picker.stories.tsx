@@ -20,8 +20,16 @@
 import type { Meta, StoryObj } from "@zoblocks/component-meta";
 import { expect, userEvent, within } from "../../../test/story-kit";
 import { buildSlots, type AvailabilitySet } from "@/lib/zoblocks-availability";
-import { dateRangePresets, plainDate, plainTime, sessionFrom } from "@/lib/zoblocks-datetime";
-import { DatePicker } from "./date-picker";
+import {
+  dateRangePresets,
+  plainDate,
+  plainTime,
+  sessionFrom,
+  weekdayOf,
+  type CalendarEvent,
+  type ZbDate,
+} from "@/lib/zoblocks-datetime";
+import { DatePicker, quickActionsFor, recommendationFromWindow } from "./date-picker";
 
 const TODAY = plainDate(2026, 8, 26);
 const NOW = { date: TODAY, time: plainTime(10, 42) };
@@ -441,5 +449,125 @@ export const Group: Story = {
     // The closure count is the one flagged, because it is the difference
     // between the rule and what will actually run.
     expect(canvasElement.querySelector('[data-zb-tally="conflicts"]')?.textContent).toBe("3");
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Smart behaviour                                                     */
+/* ------------------------------------------------------------------ */
+
+/** "Follow-up 7–14 days after the procedure on 14 September 2026." */
+const FOLLOW_UP_WINDOW = {
+  start: plainDate(2026, 9, 21),
+  end: plainDate(2026, 9, 28),
+  summary: "Follow-up is recommended 7–14 days after the procedure on 14 September 2026.",
+};
+
+const FOLLOW_UP = recommendationFromWindow(FOLLOW_UP_WINDOW, {
+  reason: "2 weeks after the patient's procedure, within the recommended follow-up window.",
+  checks: ["Provider available", "No scheduling conflicts"],
+});
+
+const SCHEDULE: Record<string, CalendarEvent[]> = {
+  "2026-09-02": [{ id: "e1", label: "Lab draw", time: "8:00 AM", tone: "info" }],
+  "2026-09-08": [
+    { id: "e2", label: "Follow-up", time: "10:00 AM" },
+    { id: "e3", label: "Consultation", time: "2:30 PM" },
+  ],
+  "2026-09-23": [{ id: "e4", label: "Group session", time: "4:00 PM" }],
+  "2026-09-30": [
+    { id: "e5", label: "Medication review", time: "9:00 AM" },
+    { id: "e6", label: "Therapy", time: "11:00 AM" },
+  ],
+};
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const scheduleOn = (date: ZbDate) => SCHEDULE[`${date.y}-${pad(date.m)}-${pad(date.d)}`] ?? null;
+const appointments = (events: readonly CalendarEvent[]) =>
+  `${events.length} Appointment${events.length === 1 ? "" : "s"} scheduled`;
+const weekend = (date: ZbDate) =>
+  weekdayOf(date) === 0 || weekdayOf(date) === 6 ? "Clinic closed at weekends" : null;
+
+export const Recommended: Story = {
+  name: "Recommended dates — outline, fill, icon",
+  parameters: { state: "Recommended dates — marked, explained, never chosen for you" },
+  args: {
+    variant: "calendar",
+    now: TODAY,
+    weekStart: 1,
+    defaultMonth: { y: 2026, m: 9 },
+    defaultValue: plainDate(2026, 9, 10),
+    recommended: FOLLOW_UP,
+    recommendedAppearance: "outline",
+    unavailable: weekend,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const cell = canvas.getByRole("gridcell", { name: /September 24, 2026/ });
+    // Said, not only shown: the reason is in the name.
+    expect(cell.getAttribute("aria-label") ?? "").toContain("recommended: 2 weeks after");
+    // A closed day inside the window is not recommended.
+    const closed = canvas.getByRole("gridcell", { name: /September 26, 2026/ });
+    expect(closed.getAttribute("aria-label") ?? "").not.toContain("recommended");
+    await userEvent.hover(cell);
+    expect(document.querySelector(".zb-dt-tip")?.textContent ?? "").toContain("Why this date?");
+  },
+};
+
+export const WithEvents: Story = {
+  name: "Dates with events — marked, still selectable",
+  parameters: {
+    state: "Dates with events — marked under the numeral, details on hover and focus",
+  },
+  args: {
+    variant: "calendar",
+    now: TODAY,
+    weekStart: 1,
+    defaultMonth: { y: 2026, m: 9 },
+    events: scheduleOn,
+    eventsLabel: appointments,
+    hints: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const cell = canvas.getByRole("gridcell", { name: /September 8, 2026/ });
+    expect(cell.getAttribute("aria-label") ?? "").toContain("2 Appointments scheduled");
+    expect(cell.getAttribute("aria-disabled")).toBeNull();
+    await userEvent.hover(cell);
+    expect(document.querySelector(".zb-dt-tip")?.textContent ?? "").toContain(
+      "10:00 AM — Follow-up",
+    );
+  },
+};
+
+export const QuickActions: Story = {
+  name: "Quick actions — follow-up: Recommended · +7 days · +14 days",
+  parameters: {
+    state: "Quick actions — the workflow's shortcuts above the grid, and the Recommended view",
+  },
+  args: {
+    variant: "picker",
+    label: "Follow-up date",
+    now: TODAY,
+    weekStart: 1,
+    unavailable: weekend,
+    calendarHints: true,
+    calendarRecommended: FOLLOW_UP,
+    calendarRecommendation: FOLLOW_UP_WINDOW,
+    calendarEvents: scheduleOn,
+    calendarEventsLabel: appointments,
+    calendarQuickActions: quickActionsFor("follow-up", TODAY, { weekStart: 1 }),
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole("button", { name: /calendar/i }));
+    const panel = within(document.querySelector('[role="dialog"]') as HTMLElement);
+    const bar = panel.getByRole("toolbar", { name: "Quick actions" });
+    expect(
+      within(bar)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Calendar", "Recommended", "+7 days", "+14 days"]);
+    await userEvent.click(panel.getByRole("button", { name: "Recommended" }));
+    expect(panel.getByText(FOLLOW_UP_WINDOW.summary)).toBeTruthy();
   },
 };

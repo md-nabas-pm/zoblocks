@@ -34,6 +34,7 @@ import {
   describeAgeLabel,
   describeRelativeDay,
   describeZoneShift,
+  endOfWeek,
   formatClockTime,
   formatDuration,
   formatPlainDate,
@@ -55,9 +56,15 @@ import {
   withSessionDuration,
   withSessionEnd,
   withSessionStart,
+  type CalendarEvent,
   type DateOrder,
   type DateRangePreset,
+  type DateRecommendation,
   type DateShortcut,
+  type QuickAction,
+  type QuickActionContext,
+  type RecommendationWindow,
+  type RecommendedAppearance,
   type DurationBand,
   type DurationPreset,
   type MonthRef,
@@ -336,6 +343,18 @@ export interface DateFieldProps extends Omit<
    * answer for a single date, and a second press to confirm it is a press.
    */
   calendarCommit?: "immediate" | "explicit";
+  /** Forwarded to the popover calendar — why a date is recommended. */
+  calendarRecommended?: (date: ZbDate) => DateRecommendation | null;
+  /** Forwarded to the popover calendar — how a recommended day is marked. */
+  calendarRecommendedAppearance?: RecommendedAppearance;
+  /** Forwarded to the popover calendar — the window the Recommended view lists. */
+  calendarRecommendation?: RecommendationWindow;
+  /** Forwarded to the popover calendar — what is already on a date. */
+  calendarEvents?: (date: ZbDate) => readonly CalendarEvent[] | null;
+  /** Forwarded to the popover calendar — the heading over a day's events. */
+  calendarEventsLabel?: (events: readonly CalendarEvent[]) => string;
+  /** Forwarded to the popover calendar — the bar above the grid. */
+  calendarQuickActions?: readonly QuickAction[];
 }
 
 interface FieldNotice {
@@ -456,6 +475,12 @@ export const DateField = React.forwardRef<HTMLDivElement, DateFieldProps>(
       calendarHints,
       calendarMonths,
       calendarCommit,
+      calendarRecommended,
+      calendarRecommendedAppearance,
+      calendarRecommendation,
+      calendarEvents,
+      calendarEventsLabel,
+      calendarQuickActions,
       id,
       className,
       ...rest
@@ -577,6 +602,12 @@ export const DateField = React.forwardRef<HTMLDivElement, DateFieldProps>(
                 hints={calendarHints}
                 weekStart={weekStart}
                 footer={calendarFooter}
+                recommended={calendarRecommended}
+                recommendedAppearance={calendarRecommendedAppearance}
+                recommendation={calendarRecommendation}
+                events={calendarEvents}
+                eventsLabel={calendarEventsLabel}
+                quickActions={calendarQuickActions}
               />
             </TemporalPopover>
           ) : null}
@@ -750,6 +781,50 @@ export interface CalendarProps extends Omit<
   showCustomPreset?: boolean;
 
   /**
+   * Why a date is recommended, or null.
+   *
+   * A reason rather than a boolean, because the spec's first rule is that a
+   * recommendation always says why. The day is marked and the reason is in
+   * its accessible name and its tooltip; it is never selected for the reader,
+   * and every other valid day stays selectable. A day that is also
+   * `unavailable` is not marked — the reason it cannot be chosen wins.
+   */
+  recommended?: (date: ZbDate) => DateRecommendation | null;
+  /** `outline` (the default), `fill` or `icon`. All three survive greyscale. */
+  recommendedAppearance?: RecommendedAppearance;
+  /**
+   * The window recommendations come from. Enables the Recommended view, which
+   * lists only the window's selectable days, grouped by month, under
+   * `summary`. Without it a `recommended` quick action is not drawn.
+   */
+  recommendation?: RecommendationWindow;
+  /** The heading over a recommendation's reason. Translate it. */
+  recommendedHeading?: string;
+  /**
+   * What is already on a date — appointments, procedures, draws.
+   *
+   * Up to three short bars under the numeral, one per event, coloured by
+   * `tone`; the list is in the accessible name and the tooltip. Events never
+   * block: a day the host considers full is `unavailable`, with a reason.
+   */
+  events?: (date: ZbDate) => readonly CalendarEvent[] | null;
+  /** The heading over a day's events — "2 Appointments scheduled". Defaults to "2 events". */
+  eventsLabel?: (events: readonly CalendarEvent[]) => string;
+  /**
+   * The bar above the grid — "Recommended · Today · Tomorrow".
+   *
+   * Data, like `shortcuts`, because the right three for a follow-up and for a
+   * discharge are not the same three; `quickActionsFor(context, now)` builds
+   * the spec's sets. A `date` action selects through the same path as a click
+   * and brings its month into view; `recommended` switches to the Recommended
+   * view and changes nothing. When there is a `recommended` action, a
+   * "Calendar" action is put first so there is a way back.
+   */
+  quickActions?: readonly QuickAction[];
+  /** Which view the panel opens on. `grid` unless the host has a reason. */
+  defaultView?: "grid" | "recommended";
+
+  /**
    * When the selection reaches the host.
    *
    * `immediate` — the default and the existing behaviour — reports every
@@ -849,6 +924,14 @@ export const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
       presets,
       shortcuts,
       showCustomPreset,
+      recommended,
+      recommendedAppearance,
+      recommendation,
+      recommendedHeading,
+      events,
+      eventsLabel,
+      quickActions,
+      defaultView = "grid",
       commit = "immediate",
       onCancel,
       onCommit,
@@ -1107,6 +1190,131 @@ export const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
       onCancel?.();
     };
 
+    /* -------------------------------------------------------------- */
+    /* Quick actions                                                  */
+    /* -------------------------------------------------------------- */
+
+    const [view, setView] = React.useState<"grid" | "recommended">(defaultView);
+    const showingList = view === "recommended" && Boolean(recommendation);
+
+    const quick = React.useMemo<QuickAction[]>(() => {
+      if (!quickActions?.length) return [];
+      // A Recommended press with no window would switch to an empty view.
+      const usable = quickActions.filter(
+        (action) => action.kind !== "recommended" || recommendation,
+      );
+      const switches = usable.some((action) => action.kind === "recommended");
+      return switches && !usable.some((action) => action.kind === "calendar")
+        ? [{ kind: "calendar", id: "calendar", label: "Calendar" }, ...usable]
+        : usable;
+    }, [quickActions, recommendation]);
+
+    const dateActionOn = (action: QuickAction) =>
+      action.kind === "date" &&
+      (mode === "multiple"
+        ? live.dates.some((date) => isSameDate(date, action.date))
+        : mode === "range"
+          ? isSameDate(live.range?.start, action.date) || isSameDate(live.range?.end, action.date)
+          : isSameDate(live.value, action.date));
+    const anyDateOn = quick.some(dateActionOn);
+    /*
+     * One pressed thing at a time, where possible. A date the reader has
+     * taken outranks the view they took it in — "Today" pressed beside a
+     * pressed "Calendar" reads as two answers to one question.
+     */
+    const actionOn = (action: QuickAction) =>
+      action.kind === "date"
+        ? dateActionOn(action)
+        : action.kind === "recommended"
+          ? showingList
+          : !showingList && !anyDateOn;
+
+    const applyAction = (action: QuickAction) => {
+      if (action.kind === "calendar") {
+        setView("grid");
+        const anchorDate = live.value ?? live.range?.start ?? live.dates[0];
+        if (anchorDate) revealMonth(anchorDate);
+        return;
+      }
+      if (action.kind === "recommended") {
+        setView("recommended");
+        return;
+      }
+      if (isUnavailable(action.date)) return;
+      if (mode === "single") writeValue(action.date);
+      else handleSelect(action.date);
+      revealMonth(action.date);
+    };
+
+    // A toolbar is one tabstop; arrows move within it.
+    const [quickFocus, setQuickFocus] = React.useState<number | null>(null);
+    const toolbarRef = React.useRef<HTMLDivElement>(null);
+    const pressedIndex = quick.findIndex(actionOn);
+    const tabStop = quickFocus ?? (pressedIndex > -1 ? pressedIndex : 0);
+
+    const onToolbarKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const last = quick.length - 1;
+      let next: number;
+      switch (event.key) {
+        case "ArrowRight":
+          next = tabStop >= last ? 0 : tabStop + 1;
+          break;
+        case "ArrowLeft":
+          next = tabStop <= 0 ? last : tabStop - 1;
+          break;
+        case "Home":
+          next = 0;
+          break;
+        case "End":
+          next = last;
+          break;
+        default:
+          return;
+      }
+      event.preventDefault();
+      setQuickFocus(next);
+      toolbarRef.current?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
+    };
+
+    const toolbar = quick.length ? (
+      <div
+        ref={toolbarRef}
+        role="toolbar"
+        aria-label="Quick actions"
+        className="zb-dt-cal__quick"
+        onKeyDown={onToolbarKey}
+      >
+        {quick.map((action, index) => {
+          const on = actionOn(action);
+          const closed = action.kind === "date" ? isUnavailable(action.date) : null;
+          // The result is stated before the press: a date action's name
+          // carries the date it resolves to, and the pointer gets it as a
+          // title.
+          const resolved = action.kind === "date" ? formatPlainDate(action.date, "full") : null;
+          return (
+            <button
+              key={action.id}
+              type="button"
+              tabIndex={index === tabStop ? 0 : -1}
+              className={cn("zb-dt-cal__quick-action", on && "zb-dt-cal__quick-action--on")}
+              aria-pressed={on}
+              aria-disabled={closed ? true : undefined}
+              aria-label={
+                resolved
+                  ? `${action.label}, ${resolved}${closed ? `, unavailable, ${closed}` : ""}`
+                  : undefined
+              }
+              title={resolved ?? undefined}
+              onFocus={() => setQuickFocus(index)}
+              onClick={() => applyAction(action)}
+            >
+              {action.label}
+            </button>
+          );
+        })}
+      </div>
+    ) : null;
+
     const actions = explicit ? (
       <div className="zb-dt-cal__actions">
         <button type="button" className="zb-dt-cal__action" onClick={cancelNow}>
@@ -1159,6 +1367,14 @@ export const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
           fluid={fluid}
           footer={foot}
           aside={rail}
+          header={toolbar}
+          recommended={recommended}
+          recommendedAppearance={recommendedAppearance}
+          recommendedHeading={recommendedHeading}
+          events={events}
+          eventsLabel={eventsLabel}
+          view={showingList ? "recommended" : "grid"}
+          recommendation={recommendation}
         />
       </div>
     );
@@ -1188,6 +1404,75 @@ export function relativeDateOptions(now: ZbDate): DateShortcut[] {
     { id: "next-monday", label: "Next Monday", date: addCalendarDays(now, toNextMonday) },
     { id: "two-weeks", label: "In 2 weeks", date: addCalendarDays(now, 14) },
   ];
+}
+
+/**
+ * The spec's quick-action sets, one per workflow.
+ *
+ *     <Calendar quickActions={quickActionsFor("follow-up", today)} … />
+ *
+ * Three at most, because the bar is for the predictable answer and a fourth
+ * press is a fourth thing to read. "Recommended" only draws when the calendar
+ * has a `recommendation` window. "This week" resolves to the last day of the
+ * current week, counted from `weekStart`.
+ *
+ * Data, like `relativeDateOptions`: drop, reorder or relabel what does not
+ * fit your field.
+ */
+export function quickActionsFor(
+  context: QuickActionContext,
+  now: ZbDate,
+  options: { weekStart?: number } = {},
+): QuickAction[] {
+  const weekStart = options.weekStart ?? 0;
+  const day = (id: string, label: string, offset: number): QuickAction => ({
+    kind: "date",
+    id,
+    label,
+    date: addCalendarDays(now, offset),
+  });
+  const recommendedAction: QuickAction = {
+    kind: "recommended",
+    id: "recommended",
+    label: "Recommended",
+  };
+  const today = day("today", "Today", 0);
+  const tomorrow = day("tomorrow", "Tomorrow", 1);
+  switch (context) {
+    case "follow-up":
+      return [recommendedAction, day("plus-7", "+7 days", 7), day("plus-14", "+14 days", 14)];
+    case "appointment":
+      return [
+        today,
+        tomorrow,
+        { kind: "date", id: "this-week", label: "This week", date: endOfWeek(now, weekStart) },
+      ];
+    case "procedure":
+      return [recommendedAction, today, tomorrow];
+    case "medication-review":
+      return [day("plus-14", "+14 days", 14), day("plus-30", "+30 days", 30), recommendedAction];
+    case "discharge":
+      return [today, tomorrow];
+    case "documentation":
+      return [today, day("yesterday", "Yesterday", -1), day("minus-7", "7 days ago", -7)];
+    case "lab-monitoring":
+      return [recommendedAction, day("plus-7", "+7 days", 7), day("plus-30", "+30 days", 30)];
+  }
+}
+
+/**
+ * A `recommended` predicate from a window: every day in it carries the same
+ * reason. The common case — "7–14 days after the procedure" — in one line.
+ */
+export function recommendationFromWindow(
+  window: RecommendationWindow,
+  advice: DateRecommendation,
+): (date: ZbDate) => DateRecommendation | null {
+  const [lo, hi] =
+    compareDates(window.start, window.end) <= 0
+      ? [window.start, window.end]
+      : [window.end, window.start];
+  return (date) => (compareDates(date, lo) >= 0 && compareDates(date, hi) <= 0 ? advice : null);
 }
 
 /* ================================================================== */

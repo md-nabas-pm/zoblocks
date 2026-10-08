@@ -37,6 +37,8 @@ import {
   TimeField,
   TimeRangeField,
   TimeSlotGrid,
+  quickActionsFor,
+  recommendationFromWindow,
   relativeDateOptions,
   timeGrid,
   type DatePickerVariant,
@@ -50,6 +52,8 @@ import {
   plainTime,
   sessionFrom,
   withSessionEnd,
+  type CalendarEvent,
+  type RecommendedAppearance,
   type ZbDate,
   type ZbTime,
   type ZbTimeRange,
@@ -269,6 +273,111 @@ function PickerDemo() {
         calendarShowCustom
         calendarHints
         calendarCommit="explicit"
+      />
+      <Caption>value = {value ? formatPlainDate(value, "iso") : "null"}</Caption>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Smart behaviour — recommended dates, events, quick actions          */
+/* ------------------------------------------------------------------ */
+
+/** "Follow-up 7–14 days after the procedure on 14 September 2026." */
+const FOLLOW_UP_WINDOW = {
+  start: plainDate(2026, 9, 21),
+  end: plainDate(2026, 9, 28),
+  summary: "Follow-up is recommended 7–14 days after the procedure on 14 September 2026.",
+};
+
+const FOLLOW_UP = recommendationFromWindow(FOLLOW_UP_WINDOW, {
+  reason: "2 weeks after the patient's procedure, within the recommended follow-up window.",
+  checks: ["Provider available", "No scheduling conflicts"],
+});
+
+const SCHEDULE: Record<string, CalendarEvent[]> = {
+  "2026-09-03": [{ id: "e1", label: "Lab draw", time: "8:00 AM", tone: "info" }],
+  "2026-09-11": [
+    { id: "e2", label: "Follow-up", time: "10:00 AM" },
+    { id: "e3", label: "Consultation", time: "2:30 PM" },
+  ],
+  "2026-09-25": [{ id: "e4", label: "Group session", time: "4:00 PM" }],
+  "2026-09-28": [
+    { id: "e5", label: "Medication review", time: "9:00 AM" },
+    { id: "e6", label: "Therapy", time: "11:00 AM" },
+  ],
+};
+
+function scheduleOn(date: ZbDate): CalendarEvent[] | null {
+  return SCHEDULE[formatPlainDate(date, "iso")] ?? null;
+}
+
+function appointments(events: readonly CalendarEvent[]): string {
+  return `${events.length} Appointment${events.length === 1 ? "" : "s"} scheduled`;
+}
+
+/** c6 — the three recommended treatments, side by side. */
+function RecommendedDemo() {
+  const appearances: RecommendedAppearance[] = ["outline", "fill", "icon"];
+  return (
+    <Row>
+      {appearances.map((appearance) => (
+        <Labelled key={appearance} what={appearance[0]!.toUpperCase() + appearance.slice(1)}>
+          <Calendar
+            now={TODAY}
+            defaultMonth={{ y: 2026, m: 9 }}
+            defaultValue={plainDate(2026, 9, 10)}
+            unavailable={clinicClosed}
+            recommended={FOLLOW_UP}
+            recommendedAppearance={appearance}
+            events={scheduleOn}
+            eventsLabel={appointments}
+            hints
+          />
+        </Labelled>
+      ))}
+    </Row>
+  );
+}
+
+/** c7 — events under the numeral, details on hover and focus. */
+function EventsDemo() {
+  const [value, setValue] = React.useState<ZbDate | null>(null);
+  return (
+    <div className="zb-dt-demo-col">
+      <Calendar
+        now={TODAY}
+        defaultMonth={{ y: 2026, m: 9 }}
+        value={value}
+        onChange={setValue}
+        unavailable={clinicClosed}
+        events={scheduleOn}
+        eventsLabel={appointments}
+        hints
+      />
+      <Caption>value = {value ? formatPlainDate(value, "iso") : "null"}</Caption>
+    </div>
+  );
+}
+
+/** c8 — the follow-up quick actions, and the Recommended view behind one of them. */
+function QuickActionsDemo() {
+  const [value, setValue] = React.useState<ZbDate | null>(null);
+  return (
+    <div className="zb-dt-demo-col">
+      <DateField
+        label="Follow-up date"
+        showCalendar
+        now={TODAY}
+        value={value}
+        onChange={setValue}
+        unavailable={clinicClosed}
+        calendarHints
+        calendarRecommended={FOLLOW_UP}
+        calendarRecommendation={FOLLOW_UP_WINDOW}
+        calendarEvents={scheduleOn}
+        calendarEventsLabel={appointments}
+        calendarQuickActions={quickActionsFor("follow-up", TODAY)}
       />
       <Caption>value = {value ? formatPlainDate(value, "iso") : "null"}</Caption>
     </div>
@@ -1384,6 +1493,37 @@ export function DatePickerGallery() {
               wide
             >
               <DateRangeFieldDemo />
+            </Demo>
+
+            <Demo
+              id="c6"
+              name="Recommended dates"
+              api='recommended · recommendedAppearance="outline" | "fill" | "icon"'
+              tags={["guides, never forces", "reason on hover and focus"]}
+              note="A recommendation always says why. `recommended` returns a reason rather than a boolean, and the reason — with the checks the host verified — is in the day's accessible name and in the tooltip behind it. The day is marked and never chosen for the reader, and every other open day stays selectable. A day that is closed is not marked, whatever the rule says: the reason it cannot be taken outranks the reason it should be. Outline is the default because a filled day reads as already chosen; fill and icon are the spec's two alternatives, and each keeps a channel that is not hue."
+              wide
+            >
+              <RecommendedDemo />
+            </Demo>
+
+            <Demo
+              id="c7"
+              name="Dates with events"
+              api="events · eventsLabel"
+              tags={["subtle marker", "still selectable"]}
+              note="Short bars under the numeral, one per event and three at most — bars rather than dots, so an event is never mistaken for the today dot or the availability dots that share the strip. Hover or focus a marked day for the list. The events are in the day's name as well, so a screen reader hears “2 Appointments scheduled: 10:00 AM Follow-up, 2:30 PM Consultation” without a tooltip. Events never block: a day the host considers full is `unavailable`, with a reason."
+            >
+              <EventsDemo />
+            </Demo>
+
+            <Demo
+              id="c8"
+              name="Contextual quick actions"
+              api='calendarQuickActions={quickActionsFor("follow-up", now)}'
+              tags={["above the grid", "one tab stop", "Recommended view"]}
+              note="The predictable answers for the workflow, before the grid rather than beside it. `quickActionsFor` builds the spec's sets — follow-up is Recommended · +7 days · +14 days, discharge is Today · Tomorrow — and each date action names the date it resolves to, so its result is known before it is pressed. Recommended does not pick anything: it switches the panel to the window's open days, grouped by month, under the rule that produced them. Calendar is put first so there is a way back."
+            >
+              <QuickActionsDemo />
             </Demo>
           </div>
         ) : null}

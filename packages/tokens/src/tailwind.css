@@ -301,6 +301,18 @@
   --spacing-zb-datetime-target: var(--zb-datetime-target);
   --spacing-zb-datetime-gap: var(--zb-datetime-gap);
   --spacing-zb-datetime-font: var(--zb-datetime-font);
+  --color-zb-datetime-rec-ring: var(--zb-datetime-rec-ring);
+  --color-zb-datetime-rec-bg: var(--zb-datetime-rec-bg);
+  --color-zb-datetime-rec-mark: var(--zb-datetime-rec-mark);
+  --color-zb-datetime-rec-mark-inverse: var(--zb-datetime-rec-mark-inverse);
+  --color-zb-datetime-event-warning: var(--zb-datetime-event-warning);
+  --color-zb-datetime-event-info: var(--zb-datetime-event-info);
+  --color-zb-datetime-event-success: var(--zb-datetime-event-success);
+  --color-zb-datetime-event-danger: var(--zb-datetime-event-danger);
+  --color-zb-datetime-tip-bg: var(--zb-datetime-tip-bg);
+  --color-zb-datetime-tip-fg: var(--zb-datetime-tip-fg);
+  --color-zb-datetime-tip-muted: var(--zb-datetime-tip-muted);
+  --color-zb-datetime-tip-check: var(--zb-datetime-tip-check);
   --color-zb-recorder-rec: var(--zb-recorder-rec);
   --color-zb-recorder-rec-soft: var(--zb-recorder-rec-soft);
   --color-zb-recorder-rec-line: var(--zb-recorder-rec-line);

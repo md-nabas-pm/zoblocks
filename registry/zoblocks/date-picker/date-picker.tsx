@@ -248,6 +248,8 @@ export {
   TimeSlotGrid,
   BEHAVIORAL_HEALTH_DURATIONS,
   dateToSegments,
+  quickActionsFor,
+  recommendationFromWindow,
   relativeDateOptions,
   reviewDate,
   segmentsToDate,

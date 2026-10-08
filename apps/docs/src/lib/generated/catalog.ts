@@ -6211,7 +6211,10 @@ export const CATALOG: ComponentDoc[] = [
       "Recurrence — the rule in words",
       "Series — conflicts resolved before anything is written",
       "Group — the room, the roster and the real count",
-      "Read-only — the record a reviewer sees"
+      "Read-only — the record a reviewer sees",
+      "Recommended dates — marked, explained, never chosen for you",
+      "Dates with events — marked under the numeral, details on hover and focus",
+      "Quick actions — the workflow's shortcuts above the grid, and the Recommended view"
     ],
     "props": [
       {
@@ -6267,6 +6270,18 @@ export const CATALOG: ComponentDoc[] = [
             "required": false
           },
           {
+            "name": "calendarEvents",
+            "type": "((date: ZbDate) => readonly CalendarEvent[] | null)",
+            "description": "Forwarded to the popover calendar — what is already on a date.",
+            "required": false
+          },
+          {
+            "name": "calendarEventsLabel",
+            "type": "((events: readonly CalendarEvent[]) => string)",
+            "description": "Forwarded to the popover calendar — the heading over a day's events.",
+            "required": false
+          },
+          {
             "name": "calendarFooter",
             "type": "React.ReactNode",
             "description": "Rendered under the popover grid — relative-date chips, a clear action.",
@@ -6282,6 +6297,30 @@ export const CATALOG: ComponentDoc[] = [
             "name": "calendarMonths",
             "type": "number",
             "description": "Months shown side by side in the popover calendar.",
+            "required": false
+          },
+          {
+            "name": "calendarQuickActions",
+            "type": "readonly QuickAction[]",
+            "description": "Forwarded to the popover calendar — the bar above the grid.",
+            "required": false
+          },
+          {
+            "name": "calendarRecommendation",
+            "type": "RecommendationWindow",
+            "description": "Forwarded to the popover calendar — the window the Recommended view lists.",
+            "required": false
+          },
+          {
+            "name": "calendarRecommended",
+            "type": "((date: ZbDate) => DateRecommendation | null)",
+            "description": "Forwarded to the popover calendar — why a date is recommended.",
+            "required": false
+          },
+          {
+            "name": "calendarRecommendedAppearance",
+            "type": "RecommendedAppearance",
+            "description": "Forwarded to the popover calendar — how a recommended day is marked.",
             "required": false
           },
           {
@@ -6488,9 +6527,27 @@ export const CATALOG: ComponentDoc[] = [
             "required": false
           },
           {
+            "name": "defaultView",
+            "type": "'grid' | 'recommended'",
+            "description": "Which view the panel opens on. `grid` unless the host has a reason.",
+            "required": false
+          },
+          {
             "name": "doneLabel",
             "type": "string",
             "description": "The word on the committing action.",
+            "required": false
+          },
+          {
+            "name": "events",
+            "type": "((date: ZbDate) => readonly CalendarEvent[] | null)",
+            "description": "What is already on a date — appointments, procedures, draws. Up to three short bars under the numeral, one per event, coloured by `tone`; the list is in the accessible name and the tooltip. Events never block: a day the host considers full is `unavailable`, with a reason.",
+            "required": false
+          },
+          {
+            "name": "eventsLabel",
+            "type": "((events: readonly CalendarEvent[]) => string)",
+            "description": "The heading over a day's events — \"2 Appointments scheduled\". Defaults to \"2 events\".",
             "required": false
           },
           {
@@ -6614,9 +6671,39 @@ export const CATALOG: ComponentDoc[] = [
             "required": false
           },
           {
+            "name": "quickActions",
+            "type": "readonly QuickAction[]",
+            "description": "The bar above the grid — \"Recommended · Today · Tomorrow\". Data, like `shortcuts`, because the right three for a follow-up and for a discharge are not the same three; `quickActionsFor(context, now)` builds the spec's sets. A `date` action selects through the same path as a click and brings its month into view; `recommended` switches to the Recommended view and changes nothing. When there is a `recommended` action, a \"Calendar\" action is put first so there is a way back.",
+            "required": false
+          },
+          {
             "name": "range",
             "type": "DateRangeValue | null",
             "description": "The selected range, controlled. Only meaningful in `mode=\"range\"`.",
+            "required": false
+          },
+          {
+            "name": "recommendation",
+            "type": "RecommendationWindow",
+            "description": "The window recommendations come from. Enables the Recommended view, which lists only the window's selectable days, grouped by month, under `summary`. Without it a `recommended` quick action is not drawn.",
+            "required": false
+          },
+          {
+            "name": "recommended",
+            "type": "((date: ZbDate) => DateRecommendation | null)",
+            "description": "Why a date is recommended, or null. A reason rather than a boolean, because the spec's first rule is that a recommendation always says why. The day is marked and the reason is in its accessible name and its tooltip; it is never selected for the reader, and every other valid day stays selectable. A day that is also `unavailable` is not marked — the reason it cannot be chosen wins.",
+            "required": false
+          },
+          {
+            "name": "recommendedAppearance",
+            "type": "RecommendedAppearance",
+            "description": "`outline` (the default), `fill` or `icon`. All three survive greyscale.",
+            "required": false
+          },
+          {
+            "name": "recommendedHeading",
+            "type": "string",
+            "description": "The heading over a recommendation's reason. Translate it.",
             "required": false
           },
           {
@@ -7898,6 +7985,14 @@ export const CATALOG: ComponentDoc[] = [
       {
         "label": "Colour is never the only channel",
         "detail": "Today is a dot as well as a weight, an unavailable day is struck as well as dimmed, and a held session member carries a lock glyph and the word Held beside its tint. All three survive greyscale, forced-colors and a red-green deficiency."
+      },
+      {
+        "label": "A recommendation is said, not only shown",
+        "detail": "A recommended day carries its reason and checks in its accessible name — \"September 24, 2026, recommended: 2 weeks after the procedure, Provider available\" — and a day with events lists them. The dark tooltip is a second channel for sighted readers and is aria-hidden, so nothing is announced twice. Escape closes the tooltip before it closes the calendar."
+      },
+      {
+        "label": "Quick actions are one toolbar, and say what they do",
+        "detail": "The bar above the grid is a single tab stop with arrow keys between actions. A date action's name includes the date it resolves to (\"+7 days, Wednesday, September 2, 2026\"), so its result is known before it is pressed, and an action whose date is closed is disabled with the reason."
       },
       {
         "label": "The value never mirrors in RTL",

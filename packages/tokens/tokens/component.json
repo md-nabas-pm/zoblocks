@@ -753,6 +753,49 @@
     "duration": {
       "$type": "duration",
       "$value": "{density.duration}"
+    },
+    "rec-ring": {
+      "$value": "{swatch.4-border}",
+      "$description": "The ring round a recommended day. A decorative swatch rather than a status, because a recommendation guides and carries no clinical meaning; the ring's shape and the reason in the cell's name are the channels that do not depend on hue."
+    },
+    "rec-bg": {
+      "$value": "{swatch.4-bg}",
+      "$description": "The `fill` treatment of a recommended day."
+    },
+    "rec-mark": {
+      "$value": "{swatch.4}",
+      "$description": "The sparkle on a recommended day in the `icon` treatment."
+    },
+    "rec-mark-inverse": {
+      "$value": "{swatch.4-border}",
+      "$description": "The sparkle beside \"Why this date?\" on the inverse tooltip surface."
+    },
+    "event-warning": {
+      "$value": "{status.high}",
+      "$description": "The default event bar under a day's numeral. Bars, not dots, so an event is never read as the today dot or the availability dots that share the strip."
+    },
+    "event-info": {
+      "$value": "{status.low}"
+    },
+    "event-success": {
+      "$value": "{status.normal}"
+    },
+    "event-danger": {
+      "$value": "{status.critical}"
+    },
+    "tip-bg": {
+      "$value": "{text}",
+      "$description": "The day tooltip's surface: the inverse of the page, so it reads as floating over the grid rather than as part of it."
+    },
+    "tip-fg": {
+      "$value": "{bg}"
+    },
+    "tip-muted": {
+      "$value": "{bg-subtle}"
+    },
+    "tip-check": {
+      "$value": "{status.normal-border}",
+      "$description": "The ticks under a recommendation's reason, on the inverse surface \u2014 the border step, because the foreground step is tuned for the page ground, not its inverse."
     }
   },
   "recorder": {

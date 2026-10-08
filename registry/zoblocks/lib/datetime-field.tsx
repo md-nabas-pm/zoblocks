@@ -37,7 +37,11 @@ import {
   weekdayOf,
   weekdayOrder,
   type CalendarCell,
+  type CalendarEvent,
+  type DateRecommendation,
   type MonthRef,
+  type RecommendationWindow,
+  type RecommendedAppearance,
   type ZbDate,
 } from "@/lib/zoblocks-datetime";
 
@@ -657,6 +661,155 @@ export function ChevronGlyph(props: { direction: "left" | "right" | "down" }) {
   );
 }
 
+/** The recommendation mark: a four-point spark, filled so it reads at 8px. */
+export function SparkleGlyph(props: { size?: number; className?: string }) {
+  const size = props.size ?? 14;
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="currentColor"
+      aria-hidden="true"
+      className={props.className}
+    >
+      <path d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5Z" />
+      <path d="M19 15.5c.2 1.7 1.1 2.6 2.8 2.8-1.7.2-2.6 1.1-2.8 2.8-.2-1.7-1.1-2.6-2.8-2.8 1.7-.2 2.6-1.1 2.8-2.8Z" />
+    </svg>
+  );
+}
+
+function CheckGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="12"
+      height="12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Day tooltip                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A literal map, not an interpolation — the same scanner argument as the
+ * message tones below.
+ */
+const RECOMMENDED_CLASS: Record<RecommendedAppearance, string> = {
+  outline: "zb-dt-cal__day--rec-outline",
+  fill: "zb-dt-cal__day--rec-fill",
+  icon: "zb-dt-cal__day--rec-icon",
+};
+
+/** Days per row in the recommended view: a window is a list, not a week. */
+const LIST_COLUMNS = 6;
+
+function countEvents(events: readonly CalendarEvent[]): string {
+  return `${events.length} event${events.length === 1 ? "" : "s"}`;
+}
+
+function describeEvent(event: CalendarEvent): string {
+  return event.time ? `${event.time} ${event.label}` : event.label;
+}
+
+/**
+ * Why this date, and what is already on it.
+ *
+ * A visual channel only, and `aria-hidden` for that reason: everything it says
+ * is already in the cell's accessible name, which a screen reader hears the
+ * moment focus lands. A `role="tooltip"` mounted after focus is announced late
+ * or not at all, and announced twice where it does land.
+ *
+ * Portalled and fixed, because the popover it usually sits in scrolls its own
+ * overflow — an absolutely positioned tip inside it is clipped at the panel's
+ * edge, which is exactly where the last column's tip wants to be.
+ */
+function DayTip(props: {
+  anchor: HTMLElement;
+  recommendation: DateRecommendation | null;
+  events: readonly CalendarEvent[] | null;
+  eventsLabel: (events: readonly CalendarEvent[]) => string;
+  heading: string;
+}) {
+  const { anchor, recommendation, events, eventsLabel, heading } = props;
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [box, setBox] = React.useState<{ top: number; left: number } | null>(null);
+  const contentKey = `${recommendation?.reason ?? ""}|${events?.map((event) => event.id).join(",") ?? ""}`;
+
+  React.useLayoutEffect(() => {
+    const tip = ref.current;
+    if (!tip) return;
+    const cell = anchor.getBoundingClientRect();
+    const own = tip.getBoundingClientRect();
+    const gap = 6;
+    const edge = 8;
+    const left = Math.max(
+      edge,
+      Math.min(cell.left + cell.width / 2 - own.width / 2, window.innerWidth - edge - own.width),
+    );
+    // Below by default, as in the spec; above only when below would leave the
+    // screen and above would not.
+    const below = cell.bottom + gap;
+    const flip =
+      below + own.height > window.innerHeight - edge && cell.top - gap - own.height >= edge;
+    setBox({ top: flip ? cell.top - gap - own.height : below, left });
+  }, [anchor, contentKey]);
+
+  return createPortal(
+    <div
+      ref={ref}
+      className="zb-dt-tip"
+      aria-hidden="true"
+      style={box ?? { top: 0, left: 0, visibility: "hidden" }}
+      {...scopeOf(anchor)}
+    >
+      {recommendation ? (
+        <div className="zb-dt-tip__section">
+          <p className="zb-dt-tip__title">
+            <SparkleGlyph className="zb-dt-tip__spark" />
+            {heading}
+          </p>
+          <p className="zb-dt-tip__body">{recommendation.reason}</p>
+          {recommendation.checks?.length ? (
+            <ul className="zb-dt-tip__checks">
+              {recommendation.checks.map((check) => (
+                <li key={check}>
+                  <CheckGlyph />
+                  {check}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+      {events?.length ? (
+        <div className="zb-dt-tip__section">
+          <p className="zb-dt-tip__title">{eventsLabel(events)}</p>
+          <ul className="zb-dt-tip__events">
+            {events.map((event) => (
+              <li key={event.id}>
+                <i data-tone={event.tone ?? "warning"} />
+                {event.time ? `${event.time} — ${event.label}` : event.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>,
+    document.body,
+  );
+}
+
 export function LockGlyph() {
   return (
     <svg
@@ -736,6 +889,27 @@ export interface CalendarGridProps {
   footer?: React.ReactNode;
   /** Rendered beside the grid — the named-period rail. */
   aside?: React.ReactNode;
+  /** Rendered above the month header — the quick-actions bar. */
+  header?: React.ReactNode;
+  /** Why a date is recommended, or null. Marks the cell; never selects it. */
+  recommended?: (date: ZbDate) => DateRecommendation | null;
+  /** How a recommended day is marked. Defaults to `outline`. */
+  recommendedAppearance?: RecommendedAppearance;
+  /** What is already on a date. Marked under the numeral; never blocks. */
+  events?: (date: ZbDate) => readonly CalendarEvent[] | null;
+  /** The tooltip heading for a day's events. Defaults to "2 events". */
+  eventsLabel?: (events: readonly CalendarEvent[]) => string;
+  /**
+   * `recommended` swaps the month grids for the days of `recommendation`
+   * only, grouped by month. Ignored without a window.
+   */
+  view?: "grid" | "recommended";
+  /** The window the recommended view lists. */
+  recommendation?: RecommendationWindow;
+  /** The heading over a recommendation's reason. Translate it. */
+  recommendedHeading?: string;
+  /** Said in the recommended view when the window has no selectable day. */
+  recommendedEmpty?: string;
   maxSelectable?: number;
   className?: string;
 }
@@ -775,6 +949,15 @@ export function CalendarGrid(props: CalendarGridProps) {
     fluid,
     footer,
     aside,
+    header,
+    recommended,
+    recommendedAppearance = "outline",
+    events,
+    eventsLabel = countEvents,
+    view = "grid",
+    recommendation,
+    recommendedHeading = "Why this date?",
+    recommendedEmpty = "No recommended dates are available.",
     className,
   } = props;
 
@@ -928,10 +1111,50 @@ export function CalendarGrid(props: CalendarGridProps) {
       : { lo: other, hi: range.start, provisional: !range.end };
   }, [mode, range, hover]);
 
-  function renderCell(cell: CalendarCell, position: number) {
+  /*
+   * The day whose tooltip is showing. Hover and focus both set it, and the
+   * last one wins — a pointer resting on one day while the keyboard moves to
+   * another follows the keyboard, because that is where the reader is.
+   */
+  const [tip, setTip] = React.useState<{ date: ZbDate; anchor: HTMLElement } | null>(null);
+  const hideTip = (date: ZbDate) =>
+    setTip((was) => (was && isSameDate(was.date, date) ? null : was));
+
+  React.useEffect(() => {
+    if (!tip) return undefined;
+    // Window capture runs before the popover's document-capture listener, so
+    // the first Escape closes the tip and the second closes the panel.
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      setTip(null);
+    };
+    // A fixed tip does not follow a scrolling panel; it goes.
+    const onScroll = () => setTip(null);
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [tip]);
+
+  function renderCell(
+    cell: CalendarCell,
+    position: number,
+    focusTarget: ZbDate | null = effectiveFocus,
+  ) {
     const reason = unavailable?.(cell.date) ?? null;
     const selected = isSelected(cell.date);
-    const focused = isSameDate(cell.date, effectiveFocus);
+    const focused = isSameDate(cell.date, focusTarget);
+    // A closed day is not recommended, whatever the host's rule says: the
+    // reason it cannot be chosen outranks the reason it should be.
+    const advice = reason ? null : (recommended?.(cell.date) ?? null);
+    const dayEvents = events?.(cell.date) ?? null;
+    const hasEvents = Boolean(dayEvents?.length);
+    const tipped = Boolean(advice || hasEvents);
     const inRange = Boolean(
       rangeBounds &&
       compareDates(cell.date, rangeBounds.lo) >= 0 &&
@@ -950,6 +1173,13 @@ export function CalendarGrid(props: CalendarGridProps) {
     else if (isHi) name += ", end of the selected range";
     else if (inRange) name += ", within the selected range";
     if (reason) name += `, unavailable, ${reason}`;
+    if (advice) {
+      name += `, recommended: ${advice.reason}`;
+      if (advice.checks?.length) name += `, ${advice.checks.join(", ")}`;
+    }
+    if (dayEvents && hasEvents) {
+      name += `, ${eventsLabel(dayEvents)}: ${dayEvents.map(describeEvent).join(", ")}`;
+    }
     if (openings != null) {
       name +=
         openings === 0 ? ", no times" : `, ${openings} time${openings === 1 ? "" : "s"} available`;
@@ -987,15 +1217,40 @@ export function CalendarGrid(props: CalendarGridProps) {
           // as well as at the ends of the range itself.
           inRange && position === 0 && "zb-dt-cal__day--week-lo",
           inRange && position === 6 && "zb-dt-cal__day--week-hi",
+          advice && "zb-dt-cal__day--recommended",
+          advice && RECOMMENDED_CLASS[recommendedAppearance],
+          hasEvents && "zb-dt-cal__day--has-events",
         )}
         onClick={() => {
           if (reason) return;
           setFocusDate(cell.date);
           onSelect(cell.date);
         }}
-        onMouseEnter={mode === "range" ? () => setHover(cell.date) : undefined}
+        onMouseEnter={
+          mode === "range" || tipped
+            ? (event) => {
+                if (mode === "range") setHover(cell.date);
+                if (tipped) setTip({ date: cell.date, anchor: event.currentTarget });
+              }
+            : undefined
+        }
+        onMouseLeave={tipped ? () => hideTip(cell.date) : undefined}
+        onFocus={
+          tipped ? (event) => setTip({ date: cell.date, anchor: event.currentTarget }) : undefined
+        }
+        onBlur={tipped ? () => hideTip(cell.date) : undefined}
       >
         {cell.date.d}
+        {advice && recommendedAppearance === "icon" ? (
+          <SparkleGlyph size={8} className="zb-dt-cal__rec-mark" />
+        ) : null}
+        {dayEvents && hasEvents ? (
+          <span className="zb-dt-cal__events" aria-hidden="true">
+            {dayEvents.slice(0, 3).map((event) => (
+              <i key={event.id} data-tone={event.tone ?? "warning"} />
+            ))}
+          </span>
+        ) : null}
         {openings != null && openings > 0 ? (
           <span className="zb-dt-cal__load" aria-hidden="true">
             {Array.from({ length: Math.min(3, openings) }, (_, i) => (
@@ -1189,6 +1444,148 @@ export function CalendarGrid(props: CalendarGridProps) {
     );
   }
 
+  /* ---------------------------------------------------------------- */
+  /* The recommended view                                             */
+  /* ---------------------------------------------------------------- */
+
+  const listing = view === "recommended" && recommendation ? recommendation : null;
+  const [collapsed, setCollapsed] = React.useState<ReadonlySet<string>>(() => new Set());
+
+  /*
+   * The window's selectable days, grouped by month.
+   *
+   * Closed days are left out rather than struck through: this view answers
+   * "which of the recommended days can I take", and a struck day here is a
+   * day the reader has to read past to learn nothing. The grid still shows
+   * them, with their reasons, one press away.
+   */
+  const listGroups = React.useMemo(() => {
+    if (!listing) return [];
+    const lo = compareDates(listing.start, listing.end) <= 0 ? listing.start : listing.end;
+    const hi = lo === listing.start ? listing.end : listing.start;
+    const groups: { ref: MonthRef; days: ZbDate[] }[] = [];
+    // Bounded, so a window passed the wrong way round by a decade cannot hang
+    // the tab.
+    for (
+      let day = lo, n = 0;
+      compareDates(day, hi) <= 0 && n < 400;
+      day = addCalendarDays(day, 1), n += 1
+    ) {
+      if (unavailable?.(day)) continue;
+      const last = groups[groups.length - 1];
+      if (last && last.ref.y === day.y && last.ref.m === day.m) last.days.push(day);
+      else groups.push({ ref: { y: day.y, m: day.m }, days: [day] });
+    }
+    return groups;
+  }, [listing, unavailable]);
+
+  const monthKey = (ref: MonthRef) => `${ref.y}-${ref.m}`;
+  const openDays = listGroups
+    .filter((group) => !collapsed.has(monthKey(group.ref)))
+    .flatMap((group) => group.days);
+  const listFocus =
+    [focusDate, value, range?.start, dates[0]].find(
+      (candidate) => candidate && openDays.some((day) => isSameDate(day, candidate)),
+    ) ??
+    openDays[0] ??
+    null;
+
+  const onListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!listFocus || !(event.target as HTMLElement).matches?.(".zb-dt-cal__day")) return;
+    const at = openDays.findIndex((day) => isSameDate(day, listFocus));
+    let next: number;
+    switch (event.key) {
+      case "ArrowRight":
+        next = at + 1;
+        break;
+      case "ArrowLeft":
+        next = at - 1;
+        break;
+      case "ArrowDown":
+        next = at + LIST_COLUMNS;
+        break;
+      case "ArrowUp":
+        next = at - LIST_COLUMNS;
+        break;
+      case "Home":
+        next = 0;
+        break;
+      case "End":
+        next = openDays.length - 1;
+        break;
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        onSelect(listFocus);
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const target = openDays[Math.max(0, Math.min(openDays.length - 1, next))];
+    if (!target) return;
+    setFocusDate(target);
+    shouldRefocus.current = true;
+  };
+
+  function renderList(span: RecommendationWindow) {
+    return (
+      <div ref={gridRef} className="zb-dt-cal__months zb-dt-cal__list" onKeyDown={onListKeyDown}>
+        {span.summary ? <p className="zb-dt-cal__list-summary">{span.summary}</p> : null}
+        {listGroups.length === 0 ? (
+          <p className="zb-dt-cal__list-summary">{recommendedEmpty}</p>
+        ) : null}
+        {listGroups.map((group) => {
+          const key = monthKey(group.ref);
+          const open = !collapsed.has(key);
+          const title = titleOf(group.ref);
+          const rows = Array.from({ length: Math.ceil(group.days.length / LIST_COLUMNS) }, (_, i) =>
+            group.days.slice(i * LIST_COLUMNS, i * LIST_COLUMNS + LIST_COLUMNS),
+          );
+          return (
+            <section className="zb-dt-cal__list-month" key={key}>
+              <button
+                type="button"
+                className="zb-dt-cal__list-head"
+                aria-expanded={open}
+                onClick={() =>
+                  setCollapsed((was) => {
+                    const next = new Set(was);
+                    if (open) next.add(key);
+                    else next.delete(key);
+                    return next;
+                  })
+                }
+              >
+                {title}
+                <ChevronGlyph direction="down" />
+              </button>
+              {open ? (
+                <div
+                  role="grid"
+                  aria-label={title}
+                  aria-multiselectable={mode === "multiple" || undefined}
+                  className="zb-dt-cal__grid"
+                >
+                  {rows.map((row, index) => (
+                    <div role="row" className="zb-dt-cal__row zb-dt-cal__row--list" key={index}>
+                      {row.map((day, position) =>
+                        renderCell({ date: day, inMonth: true }, position, listFocus),
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const tipAdvice = tip && !unavailable?.(tip.date) ? (recommended?.(tip.date) ?? null) : null;
+  const tipEvents = tip ? (events?.(tip.date) ?? null) : null;
+
   return (
     <div
       className={cn(
@@ -1202,15 +1599,31 @@ export function CalendarGrid(props: CalendarGridProps) {
       {aside ? <div className="zb-dt-cal__aside">{aside}</div> : null}
 
       <div className="zb-dt-cal__body">
+        {header ? <div className="zb-dt-cal__top">{header}</div> : null}
+
         {/* One keyboard handler for the whole window: arrowing off the end of
             June has to land in July, and a handler per grid would stop at the
             boundary the reader is trying to cross. */}
-        <div ref={gridRef} className="zb-dt-cal__months" onKeyDown={onGridKeyDown}>
-          {shown.map((ref, index) => renderMonth(ref, index))}
-        </div>
+        {listing ? (
+          renderList(listing)
+        ) : (
+          <div ref={gridRef} className="zb-dt-cal__months" onKeyDown={onGridKeyDown}>
+            {shown.map((ref, index) => renderMonth(ref, index))}
+          </div>
+        )}
 
         {footer ? <div className="zb-dt-cal__foot">{footer}</div> : null}
       </div>
+
+      {tip && tip.anchor.isConnected && (tipAdvice || tipEvents?.length) ? (
+        <DayTip
+          anchor={tip.anchor}
+          recommendation={tipAdvice}
+          events={tipEvents}
+          eventsLabel={eventsLabel}
+          heading={recommendedHeading}
+        />
+      ) : null}
     </div>
   );
 }

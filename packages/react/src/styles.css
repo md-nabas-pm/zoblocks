@@ -8870,6 +8870,316 @@ button.zb-prov:focus-visible,
 }
 
 /*
+ * Recommended days.
+ *
+ * A ring by default, because a recommendation guides rather than selects and
+ * a filled day reads as already chosen. The hue is a third one, apart from
+ * the accent (selection) and the status tones (events), so the three never
+ * have to be told apart by shade. `fill` and `icon` are the spec's two other
+ * treatments; each keeps a non-colour channel — weight, or the mark itself.
+ */
+.zb-dt-cal__day--rec-outline {
+  box-shadow: inset 0 0 0 1.5px var(--zb-datetime-rec-ring, #d98cf2);
+}
+
+.zb-dt-cal__day--rec-fill,
+.zb-dt-cal__day--rec-fill:hover {
+  background: var(--zb-datetime-rec-bg, #fdf4ff);
+  font-weight: 500;
+}
+
+.zb-dt-cal__rec-mark {
+  position: absolute;
+  inset-block-start: 0.1875rem;
+  inset-inline-end: 0.25rem;
+  color: var(--zb-datetime-rec-mark, #c056dc);
+}
+
+/* The selected chip wins the fill; the ring and the mark stay, so a chosen
+   recommended day still says it was the recommended one. */
+.zb-dt-cal__day--selected.zb-dt-cal__day--rec-outline {
+  box-shadow:
+    inset 0 0 0 1.5px var(--zb-datetime-rec-ring, #d98cf2),
+    inset 0 0 0 3px var(--zb-surface, #fff);
+}
+
+.zb-dt-cal__day--selected .zb-dt-cal__rec-mark {
+  color: currentColor;
+}
+
+.zb-dt-cal__day:focus-visible.zb-dt-cal__day--rec-outline {
+  box-shadow:
+    inset 0 0 0 1.5px var(--zb-datetime-rec-ring, #d98cf2),
+    0 0 0 2px var(--zb-surface, #fff),
+    0 0 0 4px var(--zb-focus-ring, rgb(37 99 235 / 0.35));
+}
+
+/*
+ * Events under the numeral: short bars, one per event, three at most.
+ *
+ * Bars rather than dots so they are not mistaken for the today dot or the
+ * availability dots, which share the same strip of the cell. Where a day has
+ * both, the availability dots move to the top corner and the today dot gives
+ * way — today is still told by weight and colour.
+ */
+.zb-dt-cal__events {
+  position: absolute;
+  inset-block-end: 0.1875rem;
+  display: flex;
+  gap: 2px;
+}
+
+.zb-dt-cal__events i,
+.zb-dt-tip__events i {
+  inline-size: 3px;
+  block-size: 4px;
+  border-radius: 1px;
+  background: var(--zb-datetime-event-warning, var(--zb-status-high, #c2410c));
+}
+
+.zb-dt-cal__events i[data-tone="info"],
+.zb-dt-tip__events i[data-tone="info"] {
+  background: var(--zb-datetime-event-info, var(--zb-status-low, #2563eb));
+}
+
+.zb-dt-cal__events i[data-tone="success"],
+.zb-dt-tip__events i[data-tone="success"] {
+  background: var(--zb-datetime-event-success, var(--zb-status-normal, #15803d));
+}
+
+.zb-dt-cal__events i[data-tone="danger"],
+.zb-dt-tip__events i[data-tone="danger"] {
+  background: var(--zb-datetime-event-danger, var(--zb-status-critical, #b91c1c));
+}
+
+.zb-dt-cal__day--selected .zb-dt-cal__events i {
+  background: currentColor;
+}
+
+.zb-dt-cal__day--has-events .zb-dt-cal__load {
+  inset-block-start: 0.1875rem;
+  inset-block-end: auto;
+  inset-inline-start: 0.25rem;
+}
+
+.zb-dt-cal__day--today.zb-dt-cal__day--has-events::before {
+  display: none;
+}
+
+/*
+ * The day tooltip: why this date, and what is already on it.
+ *
+ * Dark in both themes, as drawn — it floats over the panel rather than being
+ * part of it, and an inverse surface is what separates it from the grid
+ * beneath. Visual only; the cell's accessible name already says all of it.
+ */
+.zb-dt-tip {
+  position: fixed;
+  z-index: 50;
+  box-sizing: border-box;
+  max-inline-size: min(20rem, calc(100vw - 16px));
+  padding: 0.75rem 1rem;
+  border-radius: var(--zb-radius, 0.5rem);
+  background: var(--zb-datetime-tip-bg, #111827);
+  color: var(--zb-datetime-tip-fg, #f8fafc);
+  font-family: var(--zb-font-sans, inherit);
+  font-size: var(--zb-text-sm, 0.875rem);
+  line-height: 1.45;
+  box-shadow: var(--zb-shadow-lg, 0 14px 34px -10px rgb(15 23 42 / 0.35));
+  pointer-events: none;
+  animation: zb-dt-tip-in var(--zb-duration-fast, 90ms) var(--zb-ease, ease) both;
+}
+
+.zb-dt-tip__section + .zb-dt-tip__section {
+  margin-block-start: 0.625rem;
+  padding-block-start: 0.625rem;
+  border-block-start: 1px solid rgb(255 255 255 / 0.12);
+}
+
+.zb-dt-tip__title {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 0.375rem;
+  font-weight: 600;
+}
+
+.zb-dt-tip__spark {
+  color: var(--zb-datetime-rec-mark-inverse, #e3a5f5);
+}
+
+.zb-dt-tip__body {
+  margin: 0;
+  color: var(--zb-datetime-tip-muted, #e2e8f0);
+}
+
+.zb-dt-tip__checks,
+.zb-dt-tip__events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zb-dt-tip__checks li,
+.zb-dt-tip__events li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.zb-dt-tip__checks li {
+  color: var(--zb-datetime-tip-check, #4ade80);
+}
+
+.zb-dt-tip__events {
+  flex-direction: column;
+  margin-block-start: 0;
+}
+
+.zb-dt-tip__events i {
+  block-size: 8px;
+}
+
+@keyframes zb-dt-tip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zb-dt-tip {
+    animation: none;
+  }
+}
+
+/*
+ * Quick actions: one row above the month header.
+ *
+ * The same quiet buttons as the rail, laid out as a segmented row, because
+ * the spec puts the predictable answers before the grid rather than beside
+ * it. A separator, not a fill, for the rail's reason.
+ */
+.zb-dt-cal__top {
+  margin-block-end: 0.75rem;
+  padding-block-end: 0.75rem;
+  border-block-end: 1px solid var(--zb-border, #e2e8f0);
+}
+
+.zb-dt-cal__quick {
+  display: flex;
+  /* One row, as drawn: the bar widens the panel rather than wrapping, and
+     scrolls sideways only where the panel cannot widen (a phone sheet). */
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
+
+/* A sheet is the viewport's width and cannot grow, so there the row scrolls. */
+.zb-dt-pop--sheet .zb-dt-cal__quick {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.zb-dt-cal__quick-action {
+  min-block-size: var(--zb-density-target-floor, 1.5rem);
+  padding-block: 0.375rem;
+  padding-inline: 0.625rem;
+  border: 0;
+  border-radius: var(--zb-radius, 0.5rem);
+  background: none;
+  color: var(--zb-text, inherit);
+  font: inherit;
+  font-size: var(--zb-datetime-font, var(--zb-text-sm, 0.875rem));
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--zb-duration-fast, 90ms) var(--zb-ease, ease);
+}
+
+.zb-dt-cal__quick-action:hover {
+  background: var(--zb-bg-subtle, #f8fafc);
+}
+
+.zb-dt-cal__quick-action:focus-visible {
+  outline: 2px solid var(--zb-field-border-focus, #2563eb);
+  outline-offset: -2px;
+}
+
+/* Weight as well as fill, so the pressed action survives greyscale. */
+.zb-dt-cal__quick-action--on,
+.zb-dt-cal__quick-action--on:hover {
+  background: var(--zb-bg-muted, #f1f5f9);
+  font-weight: 500;
+}
+
+.zb-dt-cal__quick-action[aria-disabled="true"] {
+  color: var(--zb-text-subtle, #94a3b8);
+  cursor: default;
+}
+
+/*
+ * The Recommended view: the window's days, grouped by month.
+ */
+.zb-dt-cal__list {
+  display: flex;
+  flex-direction: column;
+  /* The month row lays panels side by side and top-aligns them; a list is
+     one column, and each month's header bar spans it. */
+  align-items: stretch;
+  gap: 0.75rem;
+  min-inline-size: 17rem;
+}
+
+.zb-dt-cal__list-summary {
+  margin: 0;
+  max-inline-size: 20rem;
+  font-size: var(--zb-text-sm, 0.875rem);
+  line-height: 1.45;
+  color: var(--zb-text, inherit);
+}
+
+.zb-dt-cal__list-month {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.zb-dt-cal__list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  inline-size: 100%;
+  padding-block: 0.375rem;
+  padding-inline: 0.5rem;
+  border: 0;
+  border-radius: var(--zb-radius, 0.5rem);
+  background: var(--zb-bg-muted, #f1f5f9);
+  color: var(--zb-text, inherit);
+  font: inherit;
+  font-size: var(--zb-text-sm, 0.875rem);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.zb-dt-cal__list-head:focus-visible {
+  outline: 2px solid var(--zb-field-border-focus, #2563eb);
+  outline-offset: 1px;
+}
+
+.zb-dt-cal__list-head svg {
+  transition: rotate var(--zb-duration-fast, 90ms) var(--zb-ease, ease);
+}
+
+.zb-dt-cal__list-head[aria-expanded="false"] svg {
+  rotate: -90deg;
+}
+
+.zb-dt-cal__row--list {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+/*
  * The footer wraps to the grid; it never widens it.
  *
  * The panel sizes to the months it draws, and a legend plus two buttons is
