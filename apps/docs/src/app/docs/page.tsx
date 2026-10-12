@@ -289,7 +289,7 @@ export default function DocsPage() {
           lede="Add it to a React app in five steps, match Ant Design or Material UI, or use the loaders from Vue, Angular, Svelte and plain HTML."
         />
 
-        <DocsShell toc={TOC}>
+        <DocsShell current="/docs" toc={TOC}>
           {/* ------------------------------------------------ overview */}
           <DocSection id="overview" title="Overview">
             <ul className="max-w-2xl space-y-3 text-sm leading-relaxed text-graphite">

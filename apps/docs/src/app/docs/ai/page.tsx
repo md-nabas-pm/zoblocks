@@ -271,12 +271,12 @@ export default function AiDocsPage() {
 
       <main id="main">
         <DocsHero
-          eyebrow="Docs · AI agents"
+          eyebrow="Docs · MCP Server"
           title="Use ZoBlocks with your AI coding agent."
           lede="Connect your agent to ZoBlocks so it uses the real components and props instead of guessing at them. Two commands, about a minute."
         />
 
-        <DocsShell toc={TOC}>
+        <DocsShell current="/docs/ai" toc={TOC}>
           {/* --------------------------------------------------- what */}
           <DocSection id="what" title="What you get">
             <div className="grid gap-4 sm:grid-cols-2">

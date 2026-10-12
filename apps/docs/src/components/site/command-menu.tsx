@@ -60,7 +60,7 @@ const PAGES: Item[] = [
   },
   {
     id: "p-docs-ai",
-    label: "Docs: AI coding agents",
+    label: "Docs: MCP Server for AI coding agents",
     group: "Pages",
     href: "/docs/ai",
     keywords:
