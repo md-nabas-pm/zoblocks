@@ -222,9 +222,21 @@ export interface LoadedManifest {
   from: string;
 }
 
+/**
+ * `https://mirror.example/` → `https://mirror.example`. A loop rather than
+ * `/\/+$/`: `--registry` is user input, and that regex backtracks
+ * quadratically on a long run of slashes that does not end the string
+ * (CodeQL js/polynomial-redos). This is linear whatever it is given.
+ */
+export function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end--;
+  return value.slice(0, end);
+}
+
 /** The live manifest when it answers, the bundled snapshot when it does not. */
 export async function loadManifest(options: LoadOptions = {}): Promise<LoadedManifest> {
-  const registry = (options.registry ?? DEFAULT_REGISTRY).replace(/\/+$/, "");
+  const registry = withoutTrailingSlashes(options.registry ?? DEFAULT_REGISTRY);
   const url = `${registry}/ai/manifest.json`;
   const log = options.log ?? (() => {});
   const snapshot = options.snapshot ?? (() => readSnapshot());

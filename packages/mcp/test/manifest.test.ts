@@ -10,6 +10,7 @@ import {
   loadManifest,
   parseManifest,
   readSnapshot,
+  withoutTrailingSlashes,
 } from "../src/manifest.js";
 
 const snapshot = readSnapshot();
@@ -34,6 +35,24 @@ describe("parseManifest", () => {
 
   it("refuses something that is not a manifest at all", () => {
     expect(() => parseManifest({ hello: "world" })).toThrow(ManifestError);
+  });
+});
+
+describe("withoutTrailingSlashes", () => {
+  it("strips trailing slashes and nothing else", () => {
+    expect(withoutTrailingSlashes("https://mirror.example///")).toBe("https://mirror.example");
+    expect(withoutTrailingSlashes("https://mirror.example/r")).toBe("https://mirror.example/r");
+    expect(withoutTrailingSlashes("///")).toBe("");
+    expect(withoutTrailingSlashes("")).toBe("");
+  });
+
+  it("stays linear on the input that made /\\/+$/ quadratic", () => {
+    // A long run of slashes that does not end the string: the regex retried the
+    // run from every position. 200k slashes took seconds with it.
+    const hostile = `${"/".repeat(200_000)}x`;
+    const started = performance.now();
+    expect(withoutTrailingSlashes(hostile)).toBe(hostile);
+    expect(performance.now() - started).toBeLessThan(100);
   });
 });
 
