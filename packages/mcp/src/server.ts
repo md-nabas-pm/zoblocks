@@ -5,6 +5,7 @@
 
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
 import type { Manifest, ManifestComponent } from "./manifest.js";
+import { tableCell } from "./markdown.js";
 import { registerTools } from "./tools.js";
 
 /**
@@ -32,7 +33,7 @@ function componentMarkdown(c: ManifestComponent): string {
         "| --- | --- | --- | --- |",
         ...e.props.map(
           (p) =>
-            `| ${p.name} | \`${p.type.replace(/\|/g, "\\|")}\` | ${p.required ? "yes" : ""} | ${p.default ?? ""} |`,
+            `| ${tableCell(p.name)} | \`${tableCell(p.type)}\` | ${p.required ? "yes" : ""} | ${tableCell(p.default ?? "")} |`,
         ),
       ].join("\n"),
     )

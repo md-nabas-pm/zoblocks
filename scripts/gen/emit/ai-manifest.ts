@@ -43,6 +43,8 @@ import eslintPlugin from "@zoblocks/eslint-plugin";
 import { HOMEPAGE, banner, paths } from "../config";
 import type { RegistryGraphItem } from "./registry";
 import type { Emitter } from "../write";
+// The module alone: one function, no imports, shared with the MCP server.
+import { tableCell } from "../../../packages/mcp/src/markdown";
 
 /** Bumped when a reader of the manifest would have to change to keep working. */
 export const AI_MANIFEST_SCHEMA_VERSION = 1;
@@ -228,9 +230,9 @@ function fence(snippet: Snippet): string {
 
 function componentsMd(manifest: AiManifest): string {
   const rows = manifest.components.map((c) => {
-    const what = c.summary.replace(/\|/g, "\\|");
-    const install = c.availability === "announced" ? "not built yet" : `\`${c.install}\``;
-    return `| ${c.title} (\`${c.name}\`) | \`${c.importFrom}\` | ${what} | ${install} |`;
+    const install =
+      c.availability === "announced" ? "not built yet" : `\`${tableCell(c.install)}\``;
+    return `| ${tableCell(c.title)} (\`${tableCell(c.name)}\`) | \`${tableCell(c.importFrom)}\` | ${tableCell(c.summary)} | ${install} |`;
   });
 
   return `${GENERATED_MD}
