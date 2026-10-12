@@ -15,7 +15,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { parseSkillBundle } from "../packages/cli/src/agent-commands";
+import { SKILL_FILES } from "../packages/cli/src/generated/skill";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SKILL_DIR = path.join(ROOT, "skills", "zoblocks");
@@ -101,32 +101,32 @@ describe("everything the skill names exists", () => {
   });
 });
 
-describe("the published skill bundle is the skill, in a form the CLI accepts", () => {
+describe("the skill the CLI ships and the site serves is the committed skill", () => {
   /*
-   * `pnpm gen` writes apps/docs/public/ai/skill.json and `zoblocks skill add`
-   * downloads it. This is the contract between them: the CLI's own parser
-   * accepts the real bundle, and every file in it is byte-for-byte the one
-   * committed in skills/zoblocks — so what an agent installs is what this
-   * repository reviewed.
+   * `pnpm gen` writes the skill twice: into @zoblocks/cli as a module, which
+   * `zoblocks skill add` writes from, and to apps/docs/public/ai/skill.json.
+   * Both must be byte-for-byte the files committed in skills/zoblocks — so
+   * what an agent installs is what this repository reviewed.
    */
-  const bundle = parseSkillBundle(
-    JSON.parse(readFileSync(path.join(ROOT, "apps/docs/public/ai/skill.json"), "utf8")),
-  );
+  const committed = [
+    "SKILL.md",
+    ...readdirSync(path.join(SKILL_DIR, "references")).map((f) => `references/${f}`),
+  ].sort();
+  const served = JSON.parse(
+    readFileSync(path.join(ROOT, "apps/docs/public/ai/skill.json"), "utf8"),
+  ) as { name: string; files: Array<{ path: string; content: string }> };
 
-  it("is accepted by the CLI", () => {
-    expect(bundle.name).toBe("zoblocks");
-    expect(bundle.files.map((f) => f.path)).toContain("SKILL.md");
-  });
-
-  it("carries every committed file, unchanged", () => {
-    for (const file of bundle.files) {
+  it.each([
+    ["the CLI", SKILL_FILES],
+    ["/ai/skill.json", served.files],
+  ])("%s carries every committed file, unchanged", (_, files) => {
+    for (const file of files) {
       expect(file.content, file.path).toBe(readFileSync(path.join(SKILL_DIR, file.path), "utf8"));
     }
-    expect(bundle.files.map((f) => f.path).sort()).toEqual(
-      [
-        "SKILL.md",
-        ...readdirSync(path.join(SKILL_DIR, "references")).map((f) => `references/${f}`),
-      ].sort(),
-    );
+    expect(files.map((f) => f.path).sort()).toEqual(committed);
+  });
+
+  it("names the skill zoblocks", () => {
+    expect(served.name).toBe("zoblocks");
   });
 });

@@ -40,7 +40,7 @@ import {
   type Snippet,
 } from "@zoblocks/component-meta";
 import eslintPlugin from "@zoblocks/eslint-plugin";
-import { HOMEPAGE, paths } from "../config";
+import { HOMEPAGE, banner, paths } from "../config";
 import type { RegistryGraphItem } from "./registry";
 import type { Emitter } from "../write";
 
@@ -337,14 +337,15 @@ ${manifest.lintRules.map((rule) => `- \`${rule.id}\` — ${rule.description}`).j
 `;
 }
 
-/** Bumped when `zoblocks skill add` would have to change to read the bundle. */
+/** Bumped when a reader of `/ai/skill.json` would have to change to read it. */
 export const SKILL_BUNDLE_SCHEMA_VERSION = 1;
 
 /**
- * The skill as one JSON document, the way a registry item carries its source:
- * `zoblocks skill add` fetches it from the docs site and writes the files. The
- * CLI stays dependency-free and does not need `@zoblocks/mcp` installed to
- * get a skill that matches the catalog it is about.
+ * The skill as one JSON document, the way a registry item carries its source.
+ * Served at `/ai/skill.json`, and emitted into the CLI as a module
+ * (`emitCliSkill`) — `zoblocks skill add` writes from that, never from the
+ * network, so what it puts in a repository is what the published tarball
+ * contains.
  *
  * Built from the references this run just generated, not from disk, so the
  * bundle and the committed files can never be from different runs.
@@ -379,9 +380,21 @@ export async function emitAiManifest(
   for (const [file, content] of Object.entries(references)) {
     await emitter.emit(path.join(paths.skillReferences, file), content);
   }
-  await emitter.emit(
-    paths.skillBundle,
-    JSON.stringify(await buildSkillBundle(references), null, 2),
-  );
+  const bundle = await buildSkillBundle(references);
+  await emitter.emit(paths.skillBundle, JSON.stringify(bundle, null, 2));
+  await emitter.emit(paths.cliSkill, cliSkillModule(bundle.files));
   return manifest;
+}
+
+/**
+ * The skill as a TypeScript module in `@zoblocks/cli`. Generated, so the
+ * CLI's copy and `skills/zoblocks` cannot drift (`pnpm gen --check` fails),
+ * and plain data, so the CLI keeps its zero runtime dependencies.
+ */
+export function cliSkillModule(files: ReadonlyArray<{ path: string; content: string }>): string {
+  return `${banner()}
+
+/** The ZoBlocks coding skill, written by \`zoblocks skill add\`. Paths are relative to the skill folder. */
+export const SKILL_FILES: ReadonlyArray<{ readonly path: string; readonly content: string }> = ${JSON.stringify(files, null, 2)};
+`;
 }

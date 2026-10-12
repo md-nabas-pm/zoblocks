@@ -159,8 +159,8 @@ jobs:
           '
 
       # What coding agents read: the catalog manifest `@zoblocks/mcp` fetches,
-      # the skill `zoblocks skill add` downloads, and the /mcp endpoint `zoblocks
-      # mcp init` configures. A handshake, the seven read-only tools, a real
+      # the skill bundle served at /ai/skill.json, and the /mcp endpoint
+      # `zoblocks mcp init` configures. A handshake, the seven read-only tools, a real
       # answer, and a 403 for a foreign Origin — against this deploy, checked
       # against this checkout's registry and schema version. Plain Node: this
       # job installs nothing.

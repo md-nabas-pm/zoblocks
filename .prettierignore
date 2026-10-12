@@ -17,6 +17,7 @@ apps/docs/public/ai
 registry.json
 tsconfig.generated.json
 apps/docs/src/lib/generated
+packages/cli/src/generated
 apps/docs/src/app/generated-sources.css
 packages/react/src
 apps/hq/drizzle/meta

@@ -4,11 +4,14 @@
  *   node scripts/check-agent-endpoints.mjs                          # https://zoblocks.design
  *   node scripts/check-agent-endpoints.mjs --base https://<preview>
  *
- * Three things a released package points at, none of which npm can see:
+ * What coding agents read from the site, none of which npm can see:
  *
  *   /ai/manifest.json   what `@zoblocks/mcp` fetches on start
- *   /ai/skill.json      what `zoblocks skill add` downloads
  *   /mcp                what `zoblocks mcp init` writes into an agent's config
+ *   /ai/skill.json      the skill as one document, for anything that wants it
+ *                       whole. `zoblocks skill add` does not: it writes the
+ *                       copy bundled in the CLI, so nothing it writes comes
+ *                       from the network.
  *
  * So it runs twice. After the docs deploy (`ci.yml`), so a deploy that serves
  * a stale catalog or a broken endpoint fails where it happened. And before a

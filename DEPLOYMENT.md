@@ -383,26 +383,28 @@ README and LICENSE present, no test files, no extensionless relative imports in
 
 ## Coding agents: the MCP server and skill
 
-ADR 0017. Three things are served by the docs site and one is on npm, and the
-CLI points at all of them:
+ADR 0017. Three things are served by the docs site and one is on npm:
 
 | What                | Where                              | Made by                    | Read by                          |
 | ------------------- | ---------------------------------- | -------------------------- | -------------------------------- |
 | Catalog manifest    | `zoblocks.design/ai/manifest.json` | `pnpm gen`, at build       | `@zoblocks/mcp` on start         |
-| Skill bundle        | `zoblocks.design/ai/skill.json`    | `pnpm gen`, from `skills/` | `zoblocks skill add`             |
+| Skill bundle        | `zoblocks.design/ai/skill.json`    | `pnpm gen`, from `skills/` | anything that wants it whole     |
 | Remote MCP endpoint | `zoblocks.design/mcp`              | `apps/docs/src/app/mcp`    | agents `mcp init` set up         |
 | Local MCP server    | `npx -y @zoblocks/mcp`             | `packages/mcp`, via npm    | agents `mcp init --local` set up |
 
 ### Release order
 
-The site first, then npm. `zoblocks mcp init` and `zoblocks skill add` are
-useless until the URLs they write and fetch answer, so a CLI that ships ahead
-of the deploy ships two broken commands.
+The site first, then npm. `zoblocks mcp init` writes the `/mcp` URL into an
+agent's config, and `@zoblocks/mcp` fetches the manifest, so a release that
+ships ahead of the deploy points agents at URLs that do not answer yet.
+`zoblocks skill add` is not in this: it writes the skill bundled in the CLI
+(`packages/cli/src/generated/skill.ts`, from `pnpm gen`) and never fetches,
+so the skill reaches users with a CLI release.
 
 1. Merge to `main`. The docs deploy runs `check-agent-endpoints.mjs` against
    production: the manifest is in the schema this commit's server reads and
-   lists every component `registry.json` ships, the skill bundle is one the CLI
-   will write, and `/mcp` answers a handshake, lists the seven tools as
+   lists every component `registry.json` ships, the served skill bundle is
+   well-formed, and `/mcp` answers a handshake, lists the seven tools as
    read-only, finds `switch` for "toggle", and refuses a foreign Origin.
 2. Merge the Version PR.
 3. **Publish to npm.** `publish.yml` runs the same check before it publishes,

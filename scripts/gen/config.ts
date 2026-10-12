@@ -88,8 +88,14 @@ export const paths = {
    */
   aiManifest: path.join(ROOT, "apps", "docs", "public", "ai", "manifest.json"),
   skillReferences: path.join(ROOT, "skills", "zoblocks", "references"),
-  /** The skill as one JSON document, fetched by `zoblocks skill add`. */
+  /** The skill as one JSON document, served for anything that wants it whole. */
   skillBundle: path.join(ROOT, "apps", "docs", "public", "ai", "skill.json"),
+  /**
+   * The same files as a module inside the CLI, which `zoblocks skill add`
+   * writes from. Bundled rather than fetched: a CLI that writes what a URL
+   * serves is a CLI whose output anyone who controls the URL controls.
+   */
+  cliSkill: path.join(ROOT, "packages", "cli", "src", "generated", "skill.ts"),
   coverage: path.join(ROOT, "apps", "docs", "public", "r", "coverage.json"),
   /** The npm React channel, generated from the registry source. */
   reactPackage: path.join(ROOT, "packages", "react"),

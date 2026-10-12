@@ -60,4 +60,4 @@ export {
   type Client,
   type Transport,
 } from "./agents.js";
-export { SKILL_DIRS, SKILL_URL, mcpInit, skillAdd } from "./agent-commands.js";
+export { SKILL_DIRS, mcpInit, skillAdd } from "./agent-commands.js";

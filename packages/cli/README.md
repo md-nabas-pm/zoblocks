@@ -81,8 +81,10 @@ alone unless you pass `--force`, and a file with comments is never rewritten —
 the entry is printed for you to add.
 
 `zoblocks skill add` writes the ZoBlocks coding skill to `.agents/skills/zoblocks`
-and `.claude/skills/zoblocks`, which between them every agent above reads. A
-file you have changed is skipped unless you pass `--overwrite`.
+and `.claude/skills/zoblocks`, which between them every agent above reads. The
+skill ships inside this package, so nothing is downloaded and it works offline;
+run the latest CLI for the latest skill. A file you have changed is skipped
+unless you pass `--overwrite`.
 
 ## `zoblocks.json`
 

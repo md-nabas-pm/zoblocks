@@ -9,12 +9,13 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { run } from "../src/cli.js";
-import { SKILL_URL, parseSkillBundle } from "../src/agent-commands.js";
+import { SKILL_DIRS } from "../src/agent-commands.js";
+import { SKILL_FILES } from "../src/generated/skill.js";
 import { REMOTE_URL } from "../src/agents.js";
 
 let dir: string;
@@ -166,6 +167,47 @@ describe("zoblocks mcp init", () => {
     expect(await readdir(dir)).toEqual([]);
   });
 
+  it("rewrites a longer file in place without leaving its old tail behind", async () => {
+    // Written through one descriptor: the new contents are shorter than the old,
+    // so anything past them must be truncated, not left as trailing bytes.
+    const padded = `{\n  "mcpServers": {\n    "other": { "command": "x" }\n  }\n}${" ".repeat(4096)}\n`;
+    await writeFile(path.join(dir, ".mcp.json"), padded);
+    const { code } = await zoblocks(["mcp", "init", "--client", "claude"]);
+    expect(code).toBe(0);
+    const written = await text(".mcp.json");
+    expect(written.endsWith("}\n")).toBe(true);
+    expect(written.length).toBeLessThan(padded.length);
+    expect(JSON.parse(written).mcpServers.other).toEqual({ command: "x" });
+  });
+
+  it("will not write through a config file that is a symlink", async () => {
+    const outside = await mkdtemp(path.join(tmpdir(), "zoblocks-outside-"));
+    try {
+      const target = path.join(outside, "mcp.json");
+      await writeFile(target, "{}\n");
+      await symlink(target, path.join(dir, ".mcp.json"));
+      const { code, err } = await zoblocks(["mcp", "init", "--client", "claude"]);
+      expect(code).toBe(1);
+      expect(err).toContain("symlink");
+      expect(await readFile(target, "utf8")).toBe("{}\n");
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("will not write through a config folder that links outside the project", async () => {
+    const outside = await mkdtemp(path.join(tmpdir(), "zoblocks-outside-"));
+    try {
+      await symlink(outside, path.join(dir, ".cursor"));
+      const { code, err } = await zoblocks(["mcp", "init", "--client", "cursor"]);
+      expect(code).toBe(1);
+      expect(err).toContain("outside the project");
+      expect(await readdir(outside)).toEqual([]);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
   describe("Codex", () => {
     it("writes a TOML table", async () => {
       await zoblocks(["mcp", "init", "--client", "codex"]);
@@ -220,77 +262,68 @@ describe("zoblocks mcp init", () => {
 });
 
 describe("zoblocks skill add", () => {
-  const bundle = {
-    schemaVersion: 1,
-    name: "zoblocks",
-    files: [
-      { path: "SKILL.md", content: "---\nname: zoblocks\n---\n# ZoBlocks\n" },
-      { path: "references/components.md", content: "# Components\n" },
-    ],
-  };
+  /** A fetch that fails the test if called: the skill ships inside the CLI. */
+  const offline = (async () => {
+    throw new Error("skill add must not use the network");
+  }) as unknown as typeof fetch;
 
-  const serve = (body: unknown, status = 200) =>
-    (async (input: RequestInfo | URL) => {
-      expect(String(input)).toBe(SKILL_URL);
-      return new Response(JSON.stringify(body), { status });
-    }) as unknown as typeof fetch;
+  const skill = SKILL_FILES.find((f) => f.path === "SKILL.md")!;
 
-  it("writes the skill where every agent reads it", async () => {
-    const { code, out } = await zoblocks(["skill", "add"], serve(bundle));
+  it("writes the bundled skill where every agent reads it, without the network", async () => {
+    const { code, out } = await zoblocks(["skill", "add"], offline);
     expect(code).toBe(0);
-    for (const root of [".agents/skills/zoblocks", ".claude/skills/zoblocks"]) {
-      expect(await text(`${root}/SKILL.md`)).toBe(bundle.files[0]!.content);
-      expect(await text(`${root}/references/components.md`)).toBe("# Components\n");
+    for (const root of SKILL_DIRS) {
+      for (const file of SKILL_FILES) {
+        expect(await text(`${root}/${file.path}`)).toBe(file.content);
+      }
       expect(out).toContain(`write  ${root}/SKILL.md`);
     }
   });
 
   it("does nothing on a second run", async () => {
-    await zoblocks(["skill", "add"], serve(bundle));
-    const { out } = await zoblocks(["skill", "add"], serve(bundle));
+    await zoblocks(["skill", "add"], offline);
+    const { out } = await zoblocks(["skill", "add"], offline);
     expect(out).toContain("same   .agents/skills/zoblocks/SKILL.md");
     expect(out).not.toContain("write");
   });
 
   it("leaves a file changed in the project alone unless --overwrite", async () => {
-    await zoblocks(["skill", "add"], serve(bundle));
+    await zoblocks(["skill", "add"], offline);
     await writeFile(path.join(dir, ".claude/skills/zoblocks/SKILL.md"), "edited\n");
 
-    const kept = await zoblocks(["skill", "add"], serve(bundle));
+    const kept = await zoblocks(["skill", "add"], offline);
     expect(kept.out).toContain("skip   .claude/skills/zoblocks/SKILL.md");
     expect(kept.out).toContain("--overwrite");
     expect(await text(".claude/skills/zoblocks/SKILL.md")).toBe("edited\n");
 
-    await zoblocks(["skill", "add", "--overwrite"], serve(bundle));
-    expect(await text(".claude/skills/zoblocks/SKILL.md")).toBe(bundle.files[0]!.content);
+    await zoblocks(["skill", "add", "--overwrite"], offline);
+    expect(await text(".claude/skills/zoblocks/SKILL.md")).toBe(skill.content);
   });
 
   it("writes nothing on --dry-run", async () => {
-    await zoblocks(["skill", "add", "--dry-run"], serve(bundle));
+    await zoblocks(["skill", "add", "--dry-run"], offline);
     expect(await readdir(dir)).toEqual([]);
   });
 
-  it("reports a failed download", async () => {
-    const { code, err } = await zoblocks(["skill", "add"], serve({}, 404));
-    expect(code).toBe(1);
-    expect(err).toContain("404");
+  it("will not write through a skills folder that links outside the project", async () => {
+    const outside = await mkdtemp(path.join(tmpdir(), "zoblocks-outside-"));
+    try {
+      await mkdir(path.join(dir, ".claude"), { recursive: true });
+      await symlink(outside, path.join(dir, ".claude/skills"));
+      const { code, err } = await zoblocks(["skill", "add"], offline);
+      expect(code).toBe(1);
+      expect(err).toContain("outside the project");
+      expect(await readdir(outside)).toEqual([]);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 
-  it.each([
-    [
-      "a path that leaves the folder",
-      { ...bundle, files: [{ path: "../../.bashrc", content: "x" }] },
-    ],
-    ["an absolute path", { ...bundle, files: [{ path: "/etc/passwd", content: "x" }] }],
-    ["no SKILL.md", { ...bundle, files: [{ path: "references/a.md", content: "x" }] }],
-    ["a newer format", { ...bundle, schemaVersion: 2 }],
-  ])("refuses a bundle with %s, and writes nothing", async (_, body) => {
-    const { code } = await zoblocks(["skill", "add"], serve(body));
-    expect(code).toBe(1);
-    expect(await readdir(dir)).toEqual([]);
-  });
-
-  it("parses the bundle it is given, file by file", () => {
-    expect(parseSkillBundle(bundle).files).toHaveLength(2);
+  it("ships only SKILL.md and its references — nothing that could leave the folder", () => {
+    expect(SKILL_FILES.map((f) => f.path)).toContain("SKILL.md");
+    for (const file of SKILL_FILES) {
+      expect(file.path).toMatch(/^(SKILL\.md|references\/[a-z0-9-]+\.md)$/);
+    }
+    expect(skill.content).toMatch(/^---\n[\s\S]*?^name: zoblocks$/m);
   });
 });

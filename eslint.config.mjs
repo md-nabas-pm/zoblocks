@@ -59,6 +59,7 @@ export default tseslint.config(
       "content/archive/**",
       // Generated. Lint the generator, not its output.
       "apps/docs/src/lib/generated/**",
+      "packages/cli/src/generated/**",
       "apps/docs/public/**",
       // Agent-eval runs (scripts/ai-evals): whole generated apps, each with its own config.
       ".ai-evals/**",

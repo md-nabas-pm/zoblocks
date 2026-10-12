@@ -16,7 +16,8 @@
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { ITEM_SCHEMA_URL, REGISTRY_SCHEMA_URL } from "@zoblocks/cli";
+// The schema module alone, not the CLI's index — see emit/schema.ts.
+import { ITEM_SCHEMA_URL, REGISTRY_SCHEMA_URL } from "../../../packages/cli/src/schema";
 import { HOMEPAGE, REGISTRY_NAME, ROOT, SUPPORT_ITEM_NAMES, paths } from "../config";
 import type { LoadedComponent } from "../load";
 import type { Emitter } from "../write";

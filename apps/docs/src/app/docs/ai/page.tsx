@@ -430,6 +430,11 @@ export default function AiDocsPage() {
                 the skill reports usage.
               </li>
               <li>
+                <span className="font-medium text-ink">The skill ships in the CLI.</span>{" "}
+                <C>skill add</C> writes the copy inside the CLI package — nothing is downloaded —
+                and writes only to the two skill folders, never through a link out of your project.
+              </li>
+              <li>
                 <span className="font-medium text-ink">Your choice of where it runs.</span>{" "}
                 <C>--local</C> runs it on your machine; <C>--registry &lt;url&gt;</C> on the local
                 server reads the catalog from your own mirror.
