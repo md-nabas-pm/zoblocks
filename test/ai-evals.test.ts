@@ -144,6 +144,25 @@ describe("checkStylesheets", () => {
   it("has nothing to check when nothing was installed", () => {
     expect(checkStylesheets(undefined, []).ok).toBe(true);
   });
+
+  it("matches the file name, not a name that merely ends the same way", () => {
+    const lookalike = `@import "../styles/my-zoblocks-switch.css";\n@source "../components/zoblocks";`;
+    const result = checkStylesheets(lookalike, ["zoblocks-switch.css"]);
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain("zoblocks-switch.css is not imported");
+  });
+
+  it("accepts single quotes, a bare file name, and Vite's ./ paths", () => {
+    const vite = `@import 'tailwindcss';\n@import './styles/zoblocks-tokens.css';\n@import "zoblocks-switch.css";\n@source "./components/zoblocks";`;
+    expect(checkStylesheets(vite, ["zoblocks-tokens.css", "zoblocks-switch.css"]).ok).toBe(true);
+  });
+
+  it("treats a sheet name as text, never as a pattern", () => {
+    // Under the old RegExp, `+` and `(` in a name were pattern syntax.
+    const css = `@import "../styles/zoblocks-a+b(c).css";\n@source "../components/zoblocks";`;
+    expect(checkStylesheets(css, ["zoblocks-a+b(c).css"]).ok).toBe(true);
+    expect(checkStylesheets(css, ["zoblocks-aab(c).css"]).ok).toBe(false);
+  });
 });
 
 describe("checkUses", () => {

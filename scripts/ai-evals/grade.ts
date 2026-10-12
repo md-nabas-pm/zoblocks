@@ -236,10 +236,17 @@ export function checkStylesheets(
   if (globalCss === undefined)
     return { check: "stylesheets imported", ok: false, detail: "no global stylesheet found" };
 
-  const missing = installedSheets.filter(
-    (sheet) =>
-      !new RegExp(`@import\\s+["'][^"']*${sheet.replace(/[.]/g, "\\.")}["']`).test(globalCss),
+  // Read the imports with one fixed pattern and compare file names as strings.
+  // It used to build a RegExp from each sheet name, escaping only the dots —
+  // a name is data, and data has no business in a pattern (CodeQL
+  // js/incomplete-sanitization). Comparing the file name also stops
+  // `my-zoblocks-switch.css` counting as an import of `zoblocks-switch.css`.
+  const imported = new Set(
+    [...globalCss.matchAll(/@import\s+["']([^"']*)["']/g)].map(
+      ([, specifier = ""]) => specifier.split("/").pop() ?? "",
+    ),
   );
+  const missing = installedSheets.filter((sheet) => !imported.has(sheet));
   const source = /@source\s+["'][^"']*components\/zoblocks["']/.test(globalCss);
   const problems = [
     ...missing.map((m) => `${m} is not imported`),
