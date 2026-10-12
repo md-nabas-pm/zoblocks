@@ -50,9 +50,11 @@ describe("tableCell", () => {
   );
 
   it("is what an unescaped backslash would break", () => {
-    // The old escaping (pipes only): `a\|b` becomes `a\\|b`, an escaped
-    // backslash and then a bare pipe — the row gains a column.
-    const pipesOnly = "a\\|b".replace(/\|/g, "\\|");
+    // What the old escaping (pipes only) made of `a\|b`: `a\\|b`, an escaped
+    // backslash and then a bare pipe — the row gains a column. Written out
+    // rather than recomputed, so the broken escaper is not in the codebase.
+    const pipesOnly = "a\\\\|b";
+    expect(pipesOnly).toBe(String.raw`a\\|b`);
     expect(cells(`| x | ${pipesOnly} | y |`)).toHaveLength(4);
   });
 });
