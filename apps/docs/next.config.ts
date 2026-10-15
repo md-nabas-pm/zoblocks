@@ -74,8 +74,13 @@ const nextConfig: NextConfig = {
    * addresses are indexed and linked from outside, so they move permanently
    * rather than 404. Pack detail pages keep their `/marketplace/<slug>` URLs.
    */
+  /*
+   * `/install` merged into `/docs` on 28 Sep 2026: one page, so the setup
+   * steps exist once. The old address is linked from READMEs and search.
+   */
   async redirects() {
     return [
+      { source: "/install", destination: "/docs", permanent: true },
       { source: "/pro", destination: "/premium", permanent: true },
       { source: "/marketplace", destination: "/premium#design-packs", permanent: true },
     ];

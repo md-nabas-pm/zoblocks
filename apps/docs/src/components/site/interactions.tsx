@@ -9,8 +9,8 @@
  */
 
 import * as React from "react";
-import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CopyButton } from "./code-block";
 
 // ---------------------------------------------------------------------------
 // Install command
@@ -33,25 +33,8 @@ export function InstallCommand({
    */
   note?: React.ReactNode;
 }) {
-  const [copied, setCopied] = React.useState(false);
-  const timeout = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  React.useEffect(() => () => clearTimeout(timeout.current), []);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(command);
-    } catch {
-      // Clipboard can be blocked by permissions or a non-secure origin. The
-      // command is still on screen and selectable, so fail quietly rather
-      // than throwing an error at someone who can just select it.
-      return;
-    }
-    setCopied(true);
-    clearTimeout(timeout.current);
-    timeout.current = setTimeout(() => setCopied(false), 2000);
-  }
-
+  // The copy itself — clipboard, quiet failure, announcement — is the shared
+  // `CopyButton`, so this box and every code block on the site behave alike.
   const box = (
     <div
       className={cn(
@@ -92,31 +75,7 @@ export function InstallCommand({
         {command}
       </code>
 
-      <button
-        type="button"
-        onClick={copy}
-        aria-label={copied ? "Command copied" : `Copy command: ${command}`}
-        className={cn(
-          "relative flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5",
-          "font-mono text-[0.6875rem] uppercase tracking-wider",
-          "transition-colors duration-200",
-          copied
-            ? "bg-trace/15 text-trace"
-            : "text-panel-muted hover:bg-panel-fg/8 hover:text-panel-fg",
-        )}
-      >
-        {copied ? (
-          <Check aria-hidden="true" className="size-3.5" />
-        ) : (
-          <Copy aria-hidden="true" className="size-3.5" />
-        )}
-        <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
-      </button>
-
-      {/* Announced without moving focus or disturbing the button's label. */}
-      <span role="status" aria-live="polite" className="sr-only">
-        {copied ? "Command copied to clipboard" : ""}
-      </span>
+      <CopyButton text={command} what="command" ariaLabel={`Copy command: ${command}`} />
     </div>
   );
 

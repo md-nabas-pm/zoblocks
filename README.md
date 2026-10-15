@@ -18,7 +18,7 @@ reference range, the restricted record, the patient who refused to sign.
 [![Status](https://img.shields.io/badge/status-pre--release-orange.svg)](#status)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[**Documentation**](https://zoblocks.design) · [**Install guide**](docs/getting-started.md) · [**Architecture**](ARCHITECTURE.md) · [**Engineering standard**](ENGINEERING.md) · [**Decisions**](content/decisions/)
+[**Documentation**](https://zoblocks.design) · [**Getting started**](https://zoblocks.design/docs) · [**Architecture**](ARCHITECTURE.md) · [**Engineering standard**](ENGINEERING.md) · [**Decisions**](content/decisions/)
 
 </div>
 
@@ -131,26 +131,21 @@ Angular, Svelte, or plain HTML — see [`@zoblocks/loaders`](packages/loaders/RE
 
 ## Install
 
-Components are distributed as **source you own**. The CLI writes the files into
-your project, pulls in anything they share, and adds any runtime dependencies.
-
-Run once, to say where your `@/` import alias points:
+Components are distributed as **source you own**. In a React app with Tailwind
+CSS v4:
 
 ```bash
 npx @zoblocks/cli init
+npx @zoblocks/cli add pulse-loader --yes
 ```
 
-Then add components by name:
+Then import the stylesheets and use the component. **The full guide is at
+[zoblocks.design/docs](https://zoblocks.design/docs)**. It covers:
 
-```bash
-npx @zoblocks/cli add pulse-loader
-```
-
-The public catalog needs no configuration, no namespace, and no account.
-
-The rest of the setup — the `@/` alias, the Tailwind sources, and the two
-stylesheets — is in [`docs/getting-started.md`](docs/getting-started.md), with
-framework-specific pages for [Next.js](docs/nextjs.md) and [Vite](docs/vite.md).
+- adding ZoBlocks to an existing Next.js or Vite app, or starting a new one
+- the ZoBlocks, Ant Design and Material UI styles
+- Vue, Angular, Svelte and plain HTML
+- npm, pnpm, yarn and bun
 
 <details>
 <summary>Paid components</summary>

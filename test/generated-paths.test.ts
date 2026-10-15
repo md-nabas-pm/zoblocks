@@ -178,12 +178,20 @@ describe("workspace packages the docs app bundles", () => {
    * rule is about module resolution: `@zoblocks/tokens` is a dependency
    * and is only ever imported as a stylesheet, so it needs neither treatment.
    * A subpath import is excluded for the same reason.
+   *
+   * Parsed rather than matched with a regex: the install guide shows
+   * `import { AntdBridge } from "@zoblocks/bridge-antd"` inside code-sample
+   * strings, and a sample the page prints is not a module the app loads.
    */
   const imported = new Set<string>();
   const sources = ts.sys.readDirectory(path.join(DOCS, "src"), [".ts", ".tsx"]);
   for (const file of sources) {
-    for (const match of readFileSync(file, "utf8").matchAll(/from\s+"(@zoblocks\/[a-z0-9-]+)"/g)) {
-      imported.add(match[1]!);
+    const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest);
+    for (const statement of source.statements) {
+      if (!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) continue;
+      const specifier = statement.moduleSpecifier;
+      if (!specifier || !ts.isStringLiteral(specifier)) continue;
+      if (/^@zoblocks\/[a-z0-9-]+$/.test(specifier.text)) imported.add(specifier.text);
     }
   }
 

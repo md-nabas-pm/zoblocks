@@ -68,9 +68,11 @@ describe("the old addresses", () => {
   });
 
   it("are not linked from the site chrome", () => {
+    // Where the chrome's links are written. The header and the mobile menu
+    // share one list in lib/nav.ts, so that is where their Premium link lives.
     for (const file of [
       "apps/docs/src/components/site/chrome.tsx",
-      "apps/docs/src/components/site/site-menu.tsx",
+      "apps/docs/src/lib/nav.ts",
       "apps/docs/src/components/site/command-menu.tsx",
       "apps/docs/src/app/sitemap.ts",
     ]) {
@@ -79,5 +81,9 @@ describe("the old addresses", () => {
       expect(source, file).not.toMatch(/(?:href|path)[=:]\s*["'`]\/(?:pro|marketplace)["'`]/);
       expect(source, file).toMatch(/(?:href|path)[=:]\s*["'`]\/premium["'`]/);
     }
+    // The menu renders that shared list, and must not add an old address of its own.
+    const menu = read("apps/docs/src/components/site/site-menu.tsx");
+    expect(menu).not.toMatch(/(?:href|path)[=:]\s*["'`]\/(?:pro|marketplace)["'`]/);
+    expect(menu).toMatch(/from "@\/lib\/nav"/);
   });
 });

@@ -23,12 +23,10 @@ import { cn } from "@/lib/utils";
 import { restoreFocus } from "@/components/site/interactions";
 import { ThemeToggle } from "@/components/site/theme-toggle";
 import { ZOWORK_HREF } from "@/lib/zowork";
+import { NAV, isNavActive } from "@/lib/nav";
 
-const LINKS = [
-  { href: "/components", label: "Components" },
-  { href: "/showcase", label: "Blocks" },
-  { href: "/premium", label: "Premium" },
-] as const;
+/* The same list as the header, from one place: see `@/lib/nav`. */
+const LINKS = NAV;
 
 /* The pulse grid: blocks ripple out from the centre while a heartbeat runs across them. */
 const GRID_COLS = 9;
@@ -231,7 +229,7 @@ export function SiteMenu({ mark }: { mark: React.ReactNode }) {
               <nav aria-label="Main" className="relative flex min-h-0 flex-1 flex-col px-3">
                 <ul className="flex flex-col gap-1 overflow-y-auto pt-4">
                   {LINKS.map((link, i) => {
-                    const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+                    const active = isNavActive(link, pathname);
                     return (
                       <li
                         key={link.href}
