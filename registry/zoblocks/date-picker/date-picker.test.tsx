@@ -5041,6 +5041,182 @@ describe("Calendar smart behaviour", () => {
     expect(toIsoDate(onChange.mock.calls[0]![0])).toBe("2026-09-28");
   });
 
+  it("keeps the tip through other keys, and drops it on scroll, resize and blur", () => {
+    render(<Calendar now={TODAY} defaultMonth={SEPTEMBER} recommended={recommended} />);
+    const tip = () => document.body.querySelector(".zb-dt-tip");
+
+    fireEvent.mouseEnter(day(24));
+    fireEvent.keyDown(window, { key: "a" });
+    expect(tip()).not.toBeNull();
+    // Leaving a day that is not the one tipped leaves the tip alone.
+    fireEvent.mouseLeave(day(25));
+    expect(tip()).not.toBeNull();
+    fireEvent.scroll(window);
+    expect(tip()).toBeNull();
+
+    fireEvent.mouseEnter(day(24));
+    fireEvent(window, new Event("resize"));
+    expect(tip()).toBeNull();
+
+    act(() => day(26).focus());
+    expect(tip()).not.toBeNull();
+    act(() => day(26).blur());
+    expect(tip()).toBeNull();
+  });
+
+  it("flips the tip above a day at the foot of the screen", () => {
+    render(<Calendar now={TODAY} defaultMonth={SEPTEMBER} recommended={recommended} />);
+    const cell = day(24);
+    vi.spyOn(cell, "getBoundingClientRect").mockReturnValue({
+      top: window.innerHeight - 30,
+      bottom: window.innerHeight - 4,
+      left: 100,
+      right: 130,
+      width: 30,
+      height: 26,
+      x: 100,
+      y: window.innerHeight - 30,
+      toJSON: () => ({}),
+    });
+    const own = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue({ ...cell.getBoundingClientRect(), width: 200, height: 80 });
+    fireEvent.mouseEnter(cell);
+    own.mockRestore();
+    const top = Number.parseFloat(
+      (document.body.querySelector(".zb-dt-tip") as HTMLElement).style.top,
+    );
+    expect(top).toBe(window.innerHeight - 30 - 6 - 80);
+  });
+
+  it("tips a reason without checks, and counts a single event in the default words", () => {
+    render(
+      <Calendar
+        now={TODAY}
+        defaultMonth={SEPTEMBER}
+        recommended={(date) => (date.d === 24 ? { reason: "Within the window" } : null)}
+        events={(date) => (date.d === 24 ? [{ id: "a", label: "Follow-up" }] : null)}
+      />,
+    );
+    const cell = day(24);
+    expect(cell.getAttribute("aria-label")).toContain("recommended: Within the window, 1 event");
+    fireEvent.mouseEnter(cell);
+    const tip = document.body.querySelector(".zb-dt-tip");
+    expect(tip?.querySelector(".zb-dt-tip__checks")).toBeNull();
+    expect(tip?.textContent).toContain("1 event");
+  });
+
+  it("moves through the toolbar with every arrow and wraps at both ends", () => {
+    render(<Calendar now={TODAY} quickActions={quickActionsFor("documentation", TODAY)} />);
+    const bar = screen.getByRole("toolbar", { name: "Quick actions" });
+    const [today, yesterday, weekAgo] = within(bar).getAllByRole("button");
+    act(() => today!.focus());
+    fireEvent.keyDown(bar, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(weekAgo);
+    fireEvent.keyDown(bar, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(today);
+    fireEvent.keyDown(bar, { key: "End" });
+    expect(document.activeElement).toBe(weekAgo);
+    fireEvent.keyDown(bar, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(yesterday);
+    fireEvent.keyDown(bar, { key: "Home" });
+    expect(document.activeElement).toBe(today);
+    fireEvent.keyDown(bar, { key: "a" });
+    expect(document.activeElement).toBe(today);
+  });
+
+  it("presses a date action in range mode, and Calendar returns to the range's month", () => {
+    const onRangeChange = vi.fn();
+    render(
+      <Calendar
+        mode="range"
+        now={TODAY}
+        recommendation={WINDOW}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+        onRangeChange={onRangeChange}
+      />,
+    );
+    const plus7 = screen.getByRole("button", { name: /^\+7 days/ });
+    fireEvent.click(plus7);
+    expect(plus7.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Recommended" }));
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    expect(screen.getByRole("grid", { name: "September 2026" })).toBeTruthy();
+  });
+
+  it("returns Calendar to the first of several dates, or stays put with none", () => {
+    const { unmount } = render(
+      <Calendar
+        mode="multiple"
+        now={TODAY}
+        defaultDates={[plainDate(2026, 10, 5)]}
+        recommendation={WINDOW}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+        defaultView="recommended"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    expect(screen.getByRole("grid", { name: "October 2026" })).toBeTruthy();
+    unmount();
+
+    render(
+      <Calendar
+        now={TODAY}
+        recommendation={WINDOW}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+        defaultView="recommended"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    expect(screen.getByRole("grid", { name: "August 2026" })).toBeTruthy();
+  });
+
+  it("walks the Recommended list in rows, and ignores keys it does not own", () => {
+    render(
+      <Calendar
+        now={TODAY}
+        recommendation={WINDOW}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+        defaultView="recommended"
+      />,
+    );
+    act(() => day(21).focus());
+    fireEvent.keyDown(day(21), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(day(27));
+    fireEvent.keyDown(day(27), { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(day(26));
+    fireEvent.keyDown(day(26), { key: "ArrowUp" });
+    // Clamped to the first day rather than wrapping.
+    expect(document.activeElement).toBe(day(21));
+    fireEvent.keyDown(day(21), { key: "End" });
+    fireEvent.keyDown(day(28), { key: "Home" });
+    expect(document.activeElement).toBe(day(21));
+    fireEvent.keyDown(day(21), { key: "a" });
+    expect(document.activeElement).toBe(day(21));
+
+    // A key pressed on the summary, not a day, is not the list's to handle.
+    const summary = screen.getByText(WINDOW.summary);
+    fireEvent.keyDown(summary, { key: "ArrowRight" });
+    expect(day(21).tabIndex).toBe(0);
+  });
+
+  it("lists a window given backwards, and opens a collapsed month again", () => {
+    render(
+      <Calendar
+        now={TODAY}
+        recommendation={{ start: plainDate(2026, 10, 3), end: plainDate(2026, 9, 28) }}
+        quickActions={quickActionsFor("follow-up", TODAY)}
+        defaultView="recommended"
+      />,
+    );
+    expect(screen.getByRole("grid", { name: "September 2026" })).toBeTruthy();
+    const head = screen.getByRole("button", { name: "October 2026" });
+    fireEvent.click(head);
+    expect(screen.queryByRole("grid", { name: "October 2026" })).toBeNull();
+    fireEvent.click(head);
+    expect(screen.getByRole("grid", { name: "October 2026" })).toBeTruthy();
+  });
+
   it("forwards everything from the picker to its popover calendar", async () => {
     const user = userEvent.setup();
     render(

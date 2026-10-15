@@ -755,10 +755,9 @@ function DayTip(props: {
   const contentKey = `${recommendation?.reason ?? ""}|${events?.map((event) => event.id).join(",") ?? ""}`;
 
   React.useLayoutEffect(() => {
-    const tip = ref.current;
-    if (!tip) return;
     const cell = anchor.getBoundingClientRect();
-    const own = tip.getBoundingClientRect();
+    // The portal has mounted by the time a layout effect runs, so the ref is set.
+    const own = ref.current?.getBoundingClientRect() ?? { width: 0, height: 0 };
     const gap = 6;
     const edge = 8;
     const left = Math.max(
@@ -1530,8 +1529,8 @@ export function CalendarGrid(props: CalendarGridProps) {
         return;
     }
     event.preventDefault();
-    const target = openDays[Math.max(0, Math.min(openDays.length - 1, next))];
-    if (!target) return;
+    // Clamped into a list that holds `listFocus`, so the index always lands.
+    const target = openDays[Math.max(0, Math.min(openDays.length - 1, next))] ?? listFocus;
     setFocusDate(target);
     shouldRefocus.current = true;
   };
