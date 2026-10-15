@@ -26,6 +26,8 @@ export interface ExampleBlockProps {
   links?: readonly DemoLink[];
   /** Overrides the registry lookup; used by tests and by callers with a preview in hand. */
   preview?: React.ReactNode;
+  /** h4 when the example sits under a group heading. */
+  level?: 3 | 4;
 }
 
 export function fileNameFor(title: string): string {
@@ -43,7 +45,9 @@ export function ExampleBlock({
   fixture,
   links = [],
   preview,
+  level = 3,
 }: ExampleBlockProps) {
+  const Heading = level === 4 ? "h4" : "h3";
   const render = examplePreview(component, id);
   const live = preview ?? (render ? render() : null);
   const [tab, setTab] = React.useState<"preview" | "code">("preview");
@@ -54,7 +58,9 @@ export function ExampleBlock({
     <div id={baseId} data-toc={baseId} className="flex flex-col gap-3.5">
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h3 className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-ink">{title}</h3>
+          <Heading className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-ink">
+            {title}
+          </Heading>
           {fixture ? (
             <code className="font-mono text-[0.6875rem] text-graphite-soft">{fixture}</code>
           ) : null}

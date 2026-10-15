@@ -515,7 +515,7 @@ export function Playground({
             the page a reader goes to see what the component looks like.
           */}
           <div
-            className="zb-stage flex min-h-[300px] min-w-0 flex-1 items-center justify-center px-7 py-11"
+            className="zb-stage flex min-h-[360px] min-w-0 flex-1 items-center justify-center px-7 py-11"
             style={dark ? { colorScheme: "dark" } : undefined}
           >
             <div className="w-full min-w-0">
@@ -537,8 +537,21 @@ export function Playground({
             </div>
           </div>
 
-          <div className="flex w-full flex-none flex-col gap-4 border-t border-rule bg-paper p-[18px] @min-[680px]:w-60 @min-[680px]:border-l @min-[680px]:border-t-0">
-            <span className="text-xs font-medium text-graphite-soft">Props</span>
+          {/*
+            The panel is as tall as the stage's minimum and scrolls past it, so
+            a component with a dozen props does not stretch the stage into a
+            tall empty column. Focusable and named, because a region that
+            scrolls has to be reachable by keyboard.
+          */}
+          <div
+            role="region"
+            aria-label="Props"
+            tabIndex={0}
+            className="scroll-thin flex max-h-[360px] w-full flex-none flex-col gap-4 overflow-y-auto border-t border-rule bg-paper px-[18px] pb-[18px] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand @min-[680px]:w-60 @min-[680px]:border-l @min-[680px]:border-t-0"
+          >
+            <span className="sticky top-0 z-10 -mb-2 bg-paper pb-2 pt-[18px] text-xs font-medium text-graphite-soft">
+              Props
+            </span>
             {knobs.map((control) => (
               <Knob
                 key={control.prop}

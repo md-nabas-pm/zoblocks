@@ -370,6 +370,19 @@ export default async function ComponentPage({ params }: { params: Promise<{ name
     ? (component.packageName ?? `@/components/zoblocks/${component.name}`)
     : `@/components/zoblocks/${component.name}`;
   const hasGallery = ["tabs", "date-picker", "copilot", "switch"].includes(component.name);
+  /*
+   * Examples that declare a group are listed under it, in declaration order of
+   * the first example in each group. "On this page" then lists the groups
+   * rather than every example, which on Tabs would be twenty-three entries.
+   */
+  const grouped = examples.some((example) => example.group);
+  const exampleGroups = grouped
+    ? [...new Set(examples.map((example) => example.group ?? "More"))].map((group) => ({
+        group,
+        id: `examples-${group.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        items: examples.filter((example) => (example.group ?? "More") === group),
+      }))
+    : [];
   const hasRelated =
     related.length > 0 || alternatives.length > 0 || builtWith.length > 0 || usedIn.length > 0;
   const hasA11y = component.accessibility.length > 0 || a11yChecks.length > 0;
@@ -380,11 +393,13 @@ export default async function ComponentPage({ params }: { params: Promise<{ name
     ...(examples.length
       ? [
           { id: "examples", label: "Examples" },
-          ...examples.map((example) => ({
-            id: `ex-${example.id}`,
-            label: example.title,
-            depth: 1 as const,
-          })),
+          ...(grouped
+            ? exampleGroups.map((g) => ({ id: g.id, label: g.group, depth: 1 as const }))
+            : examples.map((example) => ({
+                id: `ex-${example.id}`,
+                label: example.title,
+                depth: 1 as const,
+              }))),
         ]
       : []),
     ...(hasGallery ? [{ id: "gallery", label: "Gallery" }] : []),
@@ -640,20 +655,49 @@ export default async function ComponentPage({ params }: { params: Promise<{ name
                       ))}
                     </p>
                   )}
-                  <div className="mt-4 flex flex-col gap-10">
-                    {examples.map((example) => (
-                      <ExampleBlock
-                        key={example.id}
-                        component={component.name}
-                        id={example.id}
-                        title={example.title}
-                        description={example.description}
-                        code={example.code}
-                        fixture={example.fixture}
-                        links={hostedDemo}
-                      />
-                    ))}
-                  </div>
+                  {grouped ? (
+                    <div className="mt-4 flex flex-col gap-14">
+                      {exampleGroups.map((g) => (
+                        <div key={g.id} className="flex flex-col gap-10">
+                          <h3
+                            id={g.id}
+                            data-toc={g.id}
+                            className="m-0 border-b border-rule pb-2 text-[19px] font-semibold tracking-[-0.015em] text-ink"
+                          >
+                            {g.group}
+                          </h3>
+                          {g.items.map((example) => (
+                            <ExampleBlock
+                              key={example.id}
+                              component={component.name}
+                              id={example.id}
+                              title={example.title}
+                              description={example.description}
+                              code={example.code}
+                              fixture={example.fixture}
+                              links={hostedDemo}
+                              level={4}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex flex-col gap-10">
+                      {examples.map((example) => (
+                        <ExampleBlock
+                          key={example.id}
+                          component={component.name}
+                          id={example.id}
+                          title={example.title}
+                          description={example.description}
+                          code={example.code}
+                          fixture={example.fixture}
+                          links={hostedDemo}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </DocSection>
               )}
 
