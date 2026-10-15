@@ -2,7 +2,7 @@
 
 /** The one-line install command in a component page's overview. */
 
-import { useCopy } from "./code-block";
+import { useCopy } from "@/components/site/code-block";
 
 export function InstallPill({ command }: { command: string }) {
   const { copied, copy } = useCopy(command);

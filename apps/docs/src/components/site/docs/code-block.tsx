@@ -11,32 +11,17 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useCopy } from "@/components/site/code-block";
 import { showLineNumbers, tokenize, type Lang } from "@/lib/highlight";
 import type { DemoLink } from "./sandbox";
 
 /* ------------------------------------------------------------------ */
 
-export function useCopy(text: string) {
-  const [copied, setCopied] = React.useState(false);
-  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  React.useEffect(() => () => clearTimeout(timer.current), []);
-
-  const copy = React.useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // Blocked clipboard: the code is on screen and selectable, so fail
-      // quietly rather than throw at someone who can select it.
-      return;
-    }
-    setCopied(true);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(false), 1600);
-  }, [text]);
-
-  return { copied, copy };
-}
-
+/*
+ * The copy logic is the site's one `useCopy`; this button is only its skin
+ * for the light toolbar above a code block, where the site's own CopyButton
+ * (drawn for the dark panel) would not sit.
+ */
 const BAR_BUTTON =
   "inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-[7px] px-[9px] text-[12.5px] " +
   "text-graphite transition-colors hover:bg-rule/60 hover:text-ink " +
